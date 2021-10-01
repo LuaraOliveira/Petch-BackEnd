@@ -1,5 +1,7 @@
 import { AfterSync, BeforeSave, Column, DataType, DefaultScope, Model, Table } from 'sequelize-typescript';
 
+import { formatData } from '../utils';
+
 @DefaultScope(() => ({
   order: [['id', 'asc']]
 }))
@@ -20,7 +22,10 @@ export class Partner extends Model {
   @Column({
     type: DataType.STRING,
     allowNull: false,
-    unique: true
+    unique: true,
+    get(this: Partner) {
+      return formatData(this.getDataValue('cnpj'), 'cnpj');
+    }
   })
   cnpj: string;
 
@@ -52,19 +57,35 @@ export class Partner extends Model {
 
   @Column({
     type: DataType.STRING,
-    allowNull: false
+    allowNull: false,
+    get(this: Partner) {
+      return formatData(this.getDataValue('phone1'), 'phone');
+    }
   })
   phone1: string;
 
-  @Column(DataType.STRING)
+  @Column({
+    type: DataType.STRING,
+    get(this: Partner) {
+      if (this.getDataValue('phone2')) return formatData(this.getDataValue('phone2'), 'phone');
+    }
+  })
   phone2: string;
 
-  @Column(DataType.STRING)
+  @Column({
+    type: DataType.STRING,
+    get(this: Partner) {
+      if (this.getDataValue('phone3')) return formatData(this.getDataValue('phone3'), 'phone');
+    }
+  })
   phone3: string;
 
   @Column({
     type: DataType.STRING,
-    allowNull: false
+    allowNull: false,
+    get(this: Partner) {
+      return formatData(this.getDataValue('cep'), 'cep');
+    }
   })
   cep: string;
 
@@ -184,9 +205,9 @@ export class Partner extends Model {
     partner.cep = partner.cep.replace(/[\s-]/g, '');
     partner.stateRegistration = partner.stateRegistration.replace(/[\s.]/g, '');
     partner.cnpj = partner.cnpj.replace(/[\/\s-.]/g, '');
-    partner.phone1 = partner.phone1.replace(/(55)?[\s-+()]/g, '');
-    if (partner.phone2) partner.phone2 = partner.phone2.replace(/(55)?[\s-+()]/g, '');
-    if (partner.phone3) partner.phone3 = partner.phone3.replace(/(55)?[\s-+()]/g, '');
+    partner.phone1 = partner.phone1.replace(/[\s()-]/g, '');
+    if (partner.phone2) partner.phone2 = partner.phone2.replace(/[\s()-]/g, '');
+    if (partner.phone3) partner.phone3 = partner.phone3.replace(/[\s()-]/g, '');
     if (!partner.website.includes('https://')) partner.website = `https://${partner.website}`;
   }
 }

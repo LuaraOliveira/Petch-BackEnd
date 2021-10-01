@@ -56,8 +56,16 @@ export class PetController {
   @ApiQuery({ type: TFilterPet, required: false })
   @Get()
   async index(@Req() req: Request, @Query() query?: TFilterPet) {
-    if (req.user.role.name === 'Adotante') return await this.petService.find(query);
-    return await this.petService.get(query);
+    if (req.user.role.name === 'Adotante') return await this.petService.find(req.user.id, query);
+    return await this.petService.get(req.user.id);
+  }
+
+  @ApiOperation({ summary: 'Listar pets favoritos do usuário logado' })
+  @ApiOkResponse({ type: [Pet], description: 'Success' })
+  @RoleDecorator('adotante')
+  @Get('favorites')
+  async myFavorites(@Req() req: Request) {
+    return await this.petService.findMyFavorites(req.user.id);
   }
 
   @ApiOperation({ summary: 'Listar um pet pelo ID' })
@@ -81,8 +89,8 @@ export class PetController {
   @ApiParam({ name: 'id', required: true })
   @ApiQuery({ name: 'inactives', type: 'boolean', required: false })
   @Get(':id')
-  async byId(@Param('id') id: number) {
-    return await this.petService.findById(id);
+  async byId(@Param('id') id: number, @Query() { inactives }: Pick<TFilterPet, 'inactives'>) {
+    return await this.petService.findById(id, inactives);
   }
 
   @ApiOperation({ summary: 'Cadastrar um pet' })
@@ -237,35 +245,9 @@ export class PetController {
     return await this.petService.put(id, data, media);
   }
 
-  // @ApiOperation({ summary: 'Reativar um pet' })
-  // @ApiNoContentResponse({ description: 'No Content' })
-  // @ApiNotFoundResponse({
-  //   description: 'Not Found',
-  //   schema: {
-  //     type: 'object',
-  //     properties: {
-  //       statusCode: {
-  //         type: 'number',
-  //         example: 404,
-  //       },
-  //       message: {
-  //         type: 'string',
-  //         example: 'Pet não encontrado',
-  //       },
-  //     }
-  //   }
-  // })
-  // @ApiParam({ name: 'id', required: true })
-  // @Patch(':id')
-  // @HttpCode(204)
-  // async restore(@Param('id') id: number) {
-  //   return await this.petService.restore(id);
-  // }
-
-  @ApiOperation({ summary: 'Inativar um pet' })
+  @ApiOperation({ summary: 'Ativar e inativar um pet' })
   @ApiNoContentResponse({ description: 'No Content' })
   @ApiNotFoundResponse({
-    description: 'Not Found',
     schema: {
       type: 'object',
       properties: {
@@ -281,9 +263,10 @@ export class PetController {
     }
   })
   @ApiParam({ name: 'id', required: true })
+  @ApiQuery({ name: 'status', type: 'string', enum: ['true', 'false'], required: true })
   @Delete(':id')
   @HttpCode(204)
-  async delete(@Param('id') id: number) {
-    return await this.petService.delete(id);
+  async activeInactive(@Param('id') id: number, @Query('status') status: 'true' | 'false') {
+    return await this.petService.activeInactive(id, status);
   }
 }

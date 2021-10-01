@@ -16,16 +16,6 @@ import { capitalizeFirstLetter } from '../utils';
 @Table({ paranoid: true })
 export class Gift extends Model {
   @Column({
-    type: DataType.INTEGER,
-    allowNull: false,
-    unique: true,
-    primaryKey: true,
-    autoIncrement: true,
-    autoIncrementIdentity: false
-  })
-  id: string;
-
-  @Column({
     type: DataType.STRING,
     allowNull: false,
   })
@@ -94,8 +84,10 @@ export class Gift extends Model {
 
   @BeforeSave
   static async formatData(gift: Gift) {
+    gift.name = capitalizeFirstLetter(gift.name);
+    gift.description = capitalizeFirstLetter(gift.description);
     if (gift.size) gift.size = gift.size.toUpperCase();
-    if (gift.weight) gift.weight = gift.weight.toUpperCase();
+    if (gift.weight) gift.weight = gift.weight.toLowerCase();
     if (gift.color) gift.color = capitalizeFirstLetter(gift.color);
     if (gift.taste) gift.taste = capitalizeFirstLetter(gift.taste);
   }

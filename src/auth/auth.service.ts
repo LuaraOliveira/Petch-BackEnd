@@ -7,7 +7,7 @@ import { TForgotPassword, TGoogleLogin, TLogin, TResetPassword } from './auth.dt
 import { TCreateUser } from '../user/user.dto';
 import { User } from '../user/user.model';
 import { UserService } from '../user/user.service';
-import { createTokenHEX, trimObj } from '../utils';
+import { createTokenHEX, formatData, trimObj } from '../utils';
 
 @Injectable()
 export class AuthService {
@@ -103,9 +103,32 @@ export class AuthService {
   private async createTokenJwt(user: User) {
     const token = this.jwtService.sign({ id: user.id, email: user.email, role: user.role.name, cpf: user.cpf, password: user.hash, google: user.googleId });
 
-    const { role } = await this.jwtService.verifyAsync(token);
+    const { id, name, avatar, email, gender, cep, cpf, birthday, phone, complement, district, city, uf, deletedAt, role } = user;
 
-    return { token, role };
+    const [address, number] = user.address.split(',').map(ad => ad.trim());
+
+    return {
+      token,
+      user: {
+        id,
+        name,
+        avatar,
+        email,
+        cpf,
+        birthday,
+        gender,
+        cep,
+        address,
+        number,
+        complement,
+        district,
+        city,
+        uf,
+        phone,
+        deletedAt,
+        role: role.name
+      }
+    };
   }
 
   async googleLogin(data: TGoogleLogin) {

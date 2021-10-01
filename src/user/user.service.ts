@@ -9,7 +9,7 @@ import { User } from './user.model';
 import { UploadService } from '../config/upload.service';
 import { MailService } from '../mail/mail.service';
 import { RoleService } from '../role/role.service';
-import { convertBool, createTokenHEX, trimObj, validateCPF } from '../utils';
+import { capitalizeFirstLetter, convertBool, createTokenHEX, trimObj, validateCPF } from '../utils';
 
 @Injectable()
 export class UserService {
@@ -26,17 +26,22 @@ export class UserService {
     const options = {};
 
     if (query.gender) Object.assign(options, { gender: query.gender.toUpperCase() });
-    if (query.role) Object.assign(options, { role: where(col('role.name'), query.role) });
+    if (query.role) Object.assign(options, { role: where(col('role.name'), capitalizeFirstLetter(query.role)) });
 
     return await this.userModel.findAll({
-      paranoid: !query.inactives,
+      paranoid: !convertBool(query.inactives),
       where: options,
-      attributes: ['id', 'name', 'email', 'avatar', 'deletedAt'],
+      attributes: ['id', 'name', 'email', 'cpf', 'avatar', 'deletedAt'],
     });
   }
 
   async findById(id: number, inactives?: 'true' | 'false') {
-    const user = await this.userModel.findByPk(id, { paranoid: !convertBool(inactives) });
+    const user = await this.userModel.findByPk(id, {
+      paranoid: !convertBool(inactives),
+      attributes: {
+        exclude: ['hash', 'tokenVerificationEmail', 'tokenResetPassword', 'tokenResetPasswordExpires', 'emailVerified']
+      }
+    });
 
     if (!user) throw new HttpException('Usuário não encontrado', 404);
 
@@ -56,7 +61,8 @@ export class UserService {
     return await this.userModel.findOne({
       where: {
         cpf: cpf.replace(/[-.]/g, '').trim()
-      }
+      },
+      attributes: ['cpf']
     });
   }
 
@@ -163,7 +169,7 @@ export class UserService {
   }
 
   async confirmRegister(data: TConfirmRegister) {
-    trimObj(data)
+    trimObj(data);
     const transaction = await this.sequelize.transaction();
 
     try {

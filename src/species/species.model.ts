@@ -1,21 +1,12 @@
-import { AfterSync, BeforeSave, Column, DataType, DefaultScope, HasMany, Model, NotEmpty, Table } from 'sequelize-typescript';
+import { AfterSync, BeforeSave, Column, DataType, DefaultScope, Model, Table } from 'sequelize-typescript';
 
 import { capitalizeFirstLetter } from '../utils';
 
 @DefaultScope(() => ({
-  // include: [Size],
   order: [['id', 'asc']]
 }))
 @Table({ paranoid: true })
 export class Species extends Model {
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: false,
-    primaryKey: true,
-    autoIncrement: true
-  })
-  id: number;
-
   @Column({
     type: DataType.STRING,
     allowNull: false,

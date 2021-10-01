@@ -5,6 +5,8 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { AuthModule } from './auth/auth.module';
 import { AllExceptionsFilter } from './common/filters/exception.filter';
+import { DislikeModule } from './dislike/dislike.module';
+import { FavoriteModule } from './favorite/favorite.module';
 import { GiftModule } from './gift/gift.module';
 import { OngModule } from './ong/ong.module';
 import { PartnerModule } from './partner/partner.module';
@@ -26,20 +28,22 @@ async function bootstrap() {
     .addServer(process.env.NODE_ENV === 'dev' ? 'http://localhost:8000' : 'https://petch-dev.herokuapp.com')
     .addBearerAuth({ type: 'http', in: 'header' })
     .addTag('Auth', 'Login dos usuários, registro de novos adotantes, reinicialização de senha')
-    .addTag('Gifts', 'Armazenar os brindes que o adotante escolherá ao adotar um pet')
-    .addTag('ONGs', 'Armazenar as ONGs cadastradas pelo admin')
-    .addTag('Partners', 'Armazenar os parceiros do Petch')
-    .addTag('Pets', 'Armazenar os pets do Petch')
-    .addTag('Roles', 'Armazenar as funções que os usuários terão dentro da plataforma')
-    .addTag('Schedulings', 'Armazenar todos os agendamentos marcados')
-    .addTag('Scheduling Types', 'Armazenar os tipos de agendamento que o adotante pode efetuar')
-    .addTag('Solicitations', 'Armazenar todas as solicitações que os adotantes enviarem')
-    .addTag('Solicitation Types', 'Armazenar os tipos de solicitação que os adotantes podem abrir')
-    .addTag('Species', 'Armazenar as espécies de animais da plataforma')
-    .addTag('Users', 'Armazenar todos os usuários da plataforma')
+    .addTag('Dislikes', 'Dislikes que os adotantes dão nos pets listados')
+    .addTag('Favorites', 'Pets favoritos salvos pelos adotantes')
+    .addTag('Gifts', 'Brindes que o adotante escolherá ao adotar um pet')
+    .addTag('ONGs', 'ONGs das quais os pets pertencem')
+    .addTag('Partners', 'Empresas parceiras da plataforma')
+    .addTag('Pets', 'Pets pertencentes das ONGs que estarão disponíveis para adoção')
+    .addTag('Roles', 'Funções que os usuários terão dentro da plataforma')
+    .addTag('Schedulings', 'Agendamentos marcados pelos adotantes')
+    .addTag('Scheduling Types', 'Tipos de agendamento que o adotante pode efetuar')
+    .addTag('Solicitations', 'Solicitações que os adotantes enviarem')
+    .addTag('Solicitation Types', 'Tipos de solicitação que os adotantes podem abrir')
+    .addTag('Species', 'Espécies de animais que serão colocados para adoação')
+    .addTag('Users', 'Usuários cadastrados na plataforma')
     .build();
   const docs = SwaggerModule.createDocument(app, options, {
-    include: [AuthModule, GiftModule, OngModule, PartnerModule, PetModule, RoleModule, SchedulingModule, SchedulingTypesModule, SolicitationModule, SolicitationTypesModule, SpeciesModule, UserModule],
+    include: [AuthModule, DislikeModule, FavoriteModule, GiftModule, OngModule, PartnerModule, PetModule, RoleModule, SchedulingModule, SchedulingTypesModule, SolicitationModule, SolicitationTypesModule, SpeciesModule, UserModule],
   });
   SwaggerModule.setup('swagger', app, docs);
   app.enableCors();

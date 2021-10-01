@@ -1,5 +1,7 @@
-import { BeforeSave, BelongsTo, Column, DataType, DefaultScope, ForeignKey, Model, Table } from 'sequelize-typescript';
+import { BeforeSave, BelongsTo, Column, DataType, DefaultScope, ForeignKey, HasMany, Model, Scopes, Table } from 'sequelize-typescript';
 
+import { Dislike } from '../dislike/dislike.model';
+import { Favorite } from '../favorite/favorite.model';
 import { Ong } from '../ong/ong.model';
 import { Species } from '../species/species.model';
 import { User } from '../user/user.model';
@@ -12,6 +14,22 @@ import { capitalizeFirstLetter } from '../utils';
       attributes: ['name']
     }
   ]
+}))
+@Scopes(() => ({
+  findToAdopt: {
+    include: [
+      {
+        model: Species,
+        attributes: ['name']
+      },
+      {
+        model: Ong,
+        attributes: {
+          exclude: ['id', 'createdAt', 'updatedAt', 'deletedAt']
+        }
+      },
+    ]
+  }
 }))
 @Table({ paranoid: true })
 export class Pet extends Model {
@@ -83,6 +101,12 @@ export class Pet extends Model {
 
   @BelongsTo(() => Species)
   species: Species;
+
+  @HasMany(() => Dislike)
+  dislike: Dislike[];
+
+  @HasMany(() => Favorite)
+  favorite: Favorite[];
 
   @BeforeSave
   static async formatData(pet: Pet) {

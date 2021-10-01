@@ -1,18 +1,12 @@
 import { AfterSync, BeforeSave, Column, DataType, DefaultScope, Model, Table } from 'sequelize-typescript';
 
+import { formatData } from '../utils';
+
 @DefaultScope(() => ({
   order: [['id', 'asc']]
 }))
 @Table({ paranoid: true })
 export class Ong extends Model {
-  @Column({
-    type: DataType.INTEGER,
-    primaryKey: true,
-    allowNull: false,
-    autoIncrement: true,
-  })
-  id: number;
-
   @Column({
     type: DataType.STRING,
     allowNull: false,
@@ -38,19 +32,35 @@ export class Ong extends Model {
 
   @Column({
     type: DataType.STRING,
-    allowNull: false
+    allowNull: false,
+    get(this: Ong) {
+      return formatData(this.getDataValue('phone1'), 'phone');
+    }
   })
   phone1: string;
 
-  @Column(DataType.STRING)
+  @Column({
+    type: DataType.STRING,
+    get(this: Ong) {
+      if (this.getDataValue('phone2')) return formatData(this.getDataValue('phone2'), 'phone');
+    }
+  })
   phone2: string;
 
-  @Column(DataType.STRING)
+  @Column({
+    type: DataType.STRING,
+    get(this: Ong) {
+      if (this.getDataValue('phone3')) return formatData(this.getDataValue('phone3'), 'phone');
+    }
+  })
   phone3: string;
 
   @Column({
     type: DataType.STRING,
-    allowNull: false
+    allowNull: false,
+    get(this: Ong) {
+      return formatData(this.getDataValue('cep'), 'cep');
+    }
   })
   cep: string;
 
@@ -145,8 +155,8 @@ export class Ong extends Model {
     ong.coverage = ong.coverage.toUpperCase();
     ong.uf = ong.uf.toUpperCase();
     ong.cep = ong.cep.replace(/[\s-]/g, '');
-    ong.phone1 = ong.phone1.replace(/(55)?[\s-+()]/g, '');
-    if (ong.phone2) ong.phone2 = ong.phone2.replace(/(55)?[\s-+()]/g, '');
-    if (ong.phone3) ong.phone3 = ong.phone3.replace(/(55)?[\s-+()]/g, '');
+    ong.phone1 = ong.phone1.replace(/(\+55)?[\s()-]/g, '');
+    if (ong.phone2) ong.phone2 = ong.phone2.replace(/(\+55)?[\s()-]/g, '');
+    if (ong.phone3) ong.phone3 = ong.phone3.replace(/(\+55)?[\s()-]/g, '');
   }
 }

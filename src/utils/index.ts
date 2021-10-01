@@ -1,5 +1,6 @@
 import { HttpException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
+import { format, parseISO } from 'date-fns';
 
 export function trimObj(obj: object) {
   for (let key in obj) {
@@ -124,4 +125,15 @@ export function convertBool(value: string): boolean {
   };
 
   return values[value];
+}
+
+export function formatData(value: string, type: 'cep' | 'cpf' | 'cnpj' | 'birthday' | 'phone') {
+  if (type === 'birthday') return format(parseISO(value), 'dd/MM/yyyy');
+
+  return ({
+    'cep': value.replace(/(\d{5})(\d{3})/, '$1-$2'),
+    'cnpj': value.replace(/(\d{5})(\d{3})/, '$1-$2'),
+    'cpf': value.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4'),
+    'phone': value.replace(/(\d{2})(\d{4,5})(\d{4})/g, '($1) $2-$3'),
+  })[type]
 }

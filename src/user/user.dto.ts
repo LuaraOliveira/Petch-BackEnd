@@ -1,6 +1,6 @@
 import { ApiProperty, OmitType, PartialType, PickType } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsDateString, IsEmail, IsEnum, IsNotEmpty, IsPhoneNumber, IsPostalCode, IsString, Matches, MinLength, ValidateIf } from 'class-validator';
+import { IsDateString, IsEmail, IsEnum, IsNotEmpty, IsPhoneNumber, IsPostalCode, Matches, MinLength, ValidateIf } from 'class-validator';
 
 import { Match } from '../common/pipes/match.pipe';
 import { Role } from '../role/role.model';
@@ -15,7 +15,6 @@ export class User {
   @ApiProperty({ type: 'string' })
   @IsNotEmpty({ message: 'Nome é obrigatório' })
   @Transform(({ value }) => value.trim())
-  @IsString()
   name: string;
 
   @ApiProperty({ type: 'string', required: false })
@@ -25,7 +24,6 @@ export class User {
   @IsNotEmpty({ message: 'E-mail é obrigatório' })
   @Transform(({ value }) => value.trim())
   @IsEmail({}, { message: 'E-mail inválido' })
-  @IsString()
   email: string;
 
   @ApiProperty({ type: 'boolean', default: false })
@@ -40,7 +38,6 @@ export class User {
   @ApiProperty({ type: 'string', uniqueItems: true })
   @IsNotEmpty({ message: 'CPF é obrigatório' })
   @Transform(({ value }) => value.trim())
-  @IsString()
   cpf: string;
 
   @ApiProperty({ type: 'string' })
@@ -53,26 +50,22 @@ export class User {
   @IsNotEmpty({ message: 'Gênero é obrigatório' })
   @Transform(({ value }) => value.trim())
   @IsEnum(['M', 'F', 'O'], { message: 'Gênero inválido' })
-  @IsString()
   gender: string;
 
   @ApiProperty({ type: 'string' })
   @IsNotEmpty({ message: 'CEP é obrigatório' })
-  @Transform(({ value }) => value.trim())
+  @Transform(({ value }) => value.trim().replace(/(\d{5})(\d{3})/, '$1-$2'))
   @IsPostalCode('BR', { message: 'CEP inválido' })
-  @IsString()
   cep: string;
 
   @ApiProperty({ type: 'string' })
   @IsNotEmpty({ message: 'Endereço é obrigatório' })
   @Transform(({ value }) => value.trim())
-  @IsString()
   address: string;
 
   @ApiProperty({ type: 'string' })
   @IsNotEmpty({ message: 'Bairro é obrigatório' })
   @Transform(({ value }) => value.trim())
-  @IsString()
   district: string;
 
   @ApiProperty({ type: 'string', required: false })
@@ -81,20 +74,17 @@ export class User {
   @ApiProperty({ type: 'string' })
   @IsNotEmpty({ message: 'Cidade é obrigatória' })
   @Transform(({ value }) => value.trim())
-  @IsString()
   city: string;
 
   @ApiProperty({ type: 'string' })
   @IsNotEmpty({ message: 'UF é obrigatória' })
   @Transform(({ value }) => value.trim())
-  @IsString()
   uf: string;
 
   @ApiProperty({ type: 'string' })
   @IsNotEmpty({ message: 'Telefone é obrigatório' })
   @Transform(({ value }) => value.trim())
   @IsPhoneNumber('BR', { message: 'Telefone inválido' })
-  @IsString()
   phone: string;
 
   @ApiProperty({ type: 'string', required: false })
@@ -119,7 +109,7 @@ export class User {
   deletedAt: Date | null;
 }
 
-export class IndexUser extends PickType(User, ['id', 'name', 'email', 'avatar', 'deletedAt']) {
+export class IndexUser extends PickType(User, ['id', 'name', 'cpf', 'email', 'avatar', 'deletedAt']) {
   @ApiProperty({
     type: 'object',
     properties: {

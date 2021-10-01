@@ -6,6 +6,8 @@ import { Sequelize } from 'sequelize-typescript';
 import { TCreatePet, TFilterPet, TUpdatePet } from './pet.dto';
 import { Pet } from './pet.model';
 import { UploadService } from '../config/upload.service';
+import { DislikeService } from '../dislike/dislike.service';
+import { FavoriteService } from '../favorite/favorite.service';
 import { OngService } from '../ong/ong.service';
 import { SpeciesService } from '../species/species.service';
 import { User } from '../user/user.model';
@@ -19,13 +21,26 @@ export class PetService {
     private ongService: OngService,
     private speciesService: SpeciesService,
     private uploadService: UploadService,
-    private sequelize: Sequelize
+    private sequelize: Sequelize,
+    private dislikeService: DislikeService,
+    private favoriteService: FavoriteService,
   ) { }
 
-  async find(query?: TFilterPet) {
+  async find(id: number, query?: TFilterPet) {
     trimObj(query);
+    const dislikes = await this.dislikeService.get({
+      where: {
+        userId: id,
+        id: { [$.ne]: null }
+      },
+      attributes: ['petId']
+    });
+
+    const dislikesPetIds = dislikes.map(dislike => dislike.petId);
+
     const options = {
-      userId: null
+      userId: null,
+      id: { [$.notIn]: dislikesPetIds }
     };
 
     if (query.age) Object.assign(options, { age: { [$.startsWith]: query.age } });
@@ -35,10 +50,9 @@ export class PetService {
     if (query.speciesId) Object.assign(options, { speciesId: query.speciesId });
     if (query.uf) Object.assign(options, { ong: where(col('ong.coverage'), { [$.substring]: query.uf.toUpperCase() }) });
 
-    return await this.petModel.findAll({
+    return await this.petModel.scope('findToAdopt').findAll({
       where: options,
-      order: this.sequelize.random(),
-      include: { all: true }
+      order: this.sequelize.random()
     });
   }
 
@@ -52,12 +66,61 @@ export class PetService {
     });
   }
 
-  async findById(id: number, inactives?: boolean) {
-    const pet = await this.petModel.findByPk(id, { paranoid: !inactives });
+  async findById(id: number, inactives?: 'true' | 'false') {
+    const pet = await this.petModel.findOne({
+      where: {
+        id,
+        userId: null,
+      },
+      paranoid: !convertBool(inactives)
+    });
 
     if (!pet) throw new HttpException('Pet não encontrado', 404);
 
     return pet;
+  }
+
+  async findPetToFavorite(id: number, userId: number) {
+    const dislikes = await this.dislikeService.get({
+      where: {
+        userId,
+        id: { [$.ne]: null }
+      },
+      attributes: ['petId']
+    });
+
+    const dislikesPetIds = dislikes.map(d => d.petId);
+
+    const pet = await this.petModel.findOne({
+      where: {
+        userId: null,
+        [$.and]: [
+          { id: { [$.notIn]: dislikesPetIds } },
+          { id },
+        ]
+      }
+    });
+
+    if (!pet) throw new HttpException('Pet não encontrado', 404);
+
+    return pet;
+  }
+
+  async findMyFavorites(userId: number) {
+    const favorites = await this.favoriteService.get({
+      where: { userId },
+      attributes: ['petId']
+    });
+
+    const favoritesPetIds = favorites.map(favorite => favorite.petId);
+
+    const pets = await this.petModel.scope('findToAdopt').findAll({
+      where: {
+        id: { [$.in]: favoritesPetIds }
+      }
+    });
+
+    return pets;
   }
 
   async create(data: TCreatePet, media: Express.MulterS3.File) {
@@ -133,19 +196,30 @@ export class PetService {
 
       if (!pet) throw new HttpException('Pet não encontrado', 404);
 
+      const favorites = await this.favoriteService.get({
+        where: {
+          petId: pet.id
+        }
+      });
+
       await pet.update({ userId: user.id }, { transaction });
 
-      await transaction.commit();
+      await Promise.all(favorites.map(favorite => favorite.destroy({ force: true, transaction })));
 
-      return { user, pet };
+      await transaction.commit();
     } catch (error) {
       await transaction.rollback();
       throw new HttpException(error, 400);
     }
   }
 
-  async activeInactive(id: never, status: 'true' | 'false') {
+  async activeInactive(id: number, status: 'true' | 'false') {
     const st = convertBool(status);
+
+    const pet = await this.findById(id, 'true');
+
+    if (!st) return await pet.destroy();
+    return await pet.restore();
   }
 
   async delete(id: number) {
@@ -155,7 +229,7 @@ export class PetService {
   }
 
   async restore(id: number) {
-    const pet = await this.findById(id, true);
+    const pet = await this.findById(id, 'true');
 
     await pet.restore();
   }

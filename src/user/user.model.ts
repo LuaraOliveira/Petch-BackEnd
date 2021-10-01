@@ -1,8 +1,11 @@
 import { compare, hash } from 'bcrypt';
 import { format, parseISO } from 'date-fns';
-import { AfterSync, BeforeSave, BelongsTo, Column, DataType, DefaultScope, ForeignKey, Model, Table } from 'sequelize-typescript';
+import { AfterSync, BeforeSave, BelongsTo, Column, DataType, DefaultScope, ForeignKey, HasMany, Model, Table } from 'sequelize-typescript';
 
+import { Dislike } from '../dislike/dislike.model';
+import { Favorite } from '../favorite/favorite.model';
 import { Role } from '../role/role.model';
+import { formatData } from '../utils';
 
 @DefaultScope(() => ({
   include: [
@@ -58,12 +61,18 @@ export class User extends Model {
     type: DataType.STRING,
     unique: true,
     allowNull: false,
+    get(this: User) {
+      return formatData(this.getDataValue('cpf'), 'cpf');
+    }
   })
   cpf: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: false,
+    get(this: User) {
+      return formatData(this.getDataValue('birthday'), 'birthday');
+    }
   })
   birthday: string;
 
@@ -76,6 +85,9 @@ export class User extends Model {
   @Column({
     type: DataType.STRING,
     allowNull: false,
+    get(this: User) {
+      return formatData(this.getDataValue('cep'), 'cep');
+    }
   })
   cep: string;
 
@@ -109,6 +121,9 @@ export class User extends Model {
   @Column({
     type: DataType.STRING,
     allowNull: false,
+    get(this: User) {
+      return formatData(this.getDataValue('phone'), 'phone');
+    }
   })
   phone: string;
 
@@ -131,6 +146,12 @@ export class User extends Model {
   @BelongsTo(() => Role)
   role: Role;
 
+  @HasMany(() => Dislike)
+  dislike: Dislike[];
+
+  @HasMany(() => Favorite)
+  favorite: Favorite[];
+
   @AfterSync
   static async createAll() {
     process.env.NODE_ENV !== 'dev' && await this.bulkCreate([
@@ -141,7 +162,7 @@ export class User extends Model {
         emailVerified: true,
         hash: await hash('C@ju1208', 10),
         cpf: '55122610029',
-        birthday: '1996-08-12',
+        birthday: '1994-08-12',
         gender: 'F',
         cep: '13841155',
         address: 'Rua Carlos Manoel Franco de Campos, 130',
