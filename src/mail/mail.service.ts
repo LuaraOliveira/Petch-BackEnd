@@ -25,7 +25,7 @@ export class MailService {
             dynamicTemplateData: {
               subject: "Bem-Vindo(a) ao Petch!!",
               name: user.name,
-              link: `https://petch-front.herokuapp.com/confirmacao?token=${user.tokenVerificationEmail}&email=${user.email}`
+              link: `https://petch-front.herokuapp.com/adopter/RegisterConfirmation?token=${user.tokenVerificationEmail}&email=${user.email}`
             }
           }
         ],
