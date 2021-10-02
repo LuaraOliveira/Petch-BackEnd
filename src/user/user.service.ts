@@ -103,7 +103,7 @@ export class UserService {
       }, { transaction });
 
       await transaction.commit();
-
+      await this.mailService.newUser(user);
       return user;
     } catch (error) {
       await transaction.rollback();
@@ -194,7 +194,6 @@ export class UserService {
       }, { transaction });
 
       await transaction.commit();
-      await this.mailService.newUser(user);
     } catch (error) {
       await transaction.rollback();
       throw new HttpException(error, 400);
