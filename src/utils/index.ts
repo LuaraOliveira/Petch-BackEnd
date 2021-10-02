@@ -127,8 +127,7 @@ export function convertBool(value: string): boolean {
   return values[value];
 }
 
-export function formatData(value: string, type: 'cep' | 'cpf' | 'cnpj' | 'birthday' | 'phone') {
-  if (type === 'birthday') return format(parseISO(value), 'dd/MM/yyyy');
+export function formatData(value: string, type: 'cep' | 'cpf' | 'cnpj' | 'phone') {
 
   return ({
     'cep': value.replace(/(\d{5})(\d{3})/, '$1-$2'),

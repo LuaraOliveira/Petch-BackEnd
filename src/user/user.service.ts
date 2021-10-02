@@ -169,15 +169,17 @@ export class UserService {
   }
 
   async confirmRegister(data: TConfirmRegister) {
+
     trimObj(data);
+    const user = await this.findByEmail(data.email);
     const transaction = await this.sequelize.transaction();
+    if (!user) {
+      throw new HttpException('Usuário não encontrado', 404);
+    }
 
     try {
-      const user = await this.findByEmail(data.email);
 
       switch (true) {
-        case !user:
-          throw new HttpException('Usuário não encontrado', 404);
         case user.emailVerified:
           throw new HttpException('Usuário já confirmado', 400);
         case user.tokenVerificationEmail !== data.token:
