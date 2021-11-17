@@ -11,7 +11,7 @@ export class RoleController {
     private roleService: RoleService
   ) { }
 
-  @ApiOperation({ summary: 'Listar todas funções do sistema' })
+  @ApiOperation({ summary: 'Listar todas as funções do sistema' })
   @ApiOkResponse({ type: [Role], description: 'Success' })
   @ApiQuery({ name: 'name', enum: ['Admin', 'Adotante'], required: false })
   @Get()
@@ -29,6 +29,10 @@ export class RoleController {
         statusCode: {
           type: 'number',
           example: 404,
+        },
+        background: {
+          type: 'string',
+          example: 'error',
         },
         message: {
           type: 'string',

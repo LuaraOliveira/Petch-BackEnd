@@ -1,17 +1,68 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseArrayPipe, Patch, Post, Put, Query, Req, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBadRequestResponse, ApiBody, ApiConsumes, ApiCreatedResponse, ApiNoContentResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiBadRequestResponse, ApiBearerAuth, ApiBody, ApiConsumes, ApiCreatedResponse, ApiExcludeEndpoint, ApiForbiddenResponse, ApiNoContentResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiParam, ApiQuery, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
 
 import { SpeciesService } from './species.service';
-import { IndexSpecies, Species, TCreateSpecies, TUpdateSpecies, TFilterSpecies } from './species.dto';
+import { IndexSpecies, Species, TCreateSpecies, TUpdateSpecies, TFilterSpecies, TRegisteredSpecies } from './species.dto';
+import { RoleDecorator } from '../common/decorators/role.decorator';
+import { JwtAuthGuard } from '../common/guards/auth.guard';
+import { RoleGuard } from '../common/guards/role.guard';
 import { config } from '../config/multer';
 
 @ApiTags('Species')
+@ApiUnauthorizedResponse({
+  description: 'Unauthorized',
+  schema: {
+    type: 'object',
+    properties: {
+      statusCode: {
+        type: 'number',
+        example: 401,
+      },
+      background: {
+        type: 'string',
+        example: 'error',
+      },
+      message: {
+        type: 'string',
+        example: 'Não autorizado'
+      }
+    }
+  }
+})
+@ApiForbiddenResponse({
+  description: 'Forbidden',
+  schema: {
+    type: 'object',
+    properties: {
+      statusCode: {
+        type: 'number',
+        example: 403,
+      },
+      background: {
+        type: 'string',
+        example: 'error',
+      },
+      message: {
+        type: 'string',
+        example: 'Você não tem permissão'
+      }
+    }
+  }
+})
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RoleGuard)
 @Controller('species')
 export class SpeciesController {
   constructor(
     private speciesService: SpeciesService,
   ) { }
+
+  @ApiExcludeEndpoint()
+  @Get('all')
+  async all() {
+    return await this.speciesService.all();
+  }
 
   @ApiOperation({ summary: 'Listar todas as espécies' })
   @ApiOkResponse({ type: [IndexSpecies], description: 'Success' })
@@ -32,6 +83,10 @@ export class SpeciesController {
           type: 'number',
           example: 404,
         },
+        background: {
+          type: 'string',
+          example: 'error',
+        },
         message: {
           type: 'string',
           example: 'Espécie não encontrada',
@@ -41,13 +96,14 @@ export class SpeciesController {
   })
   @ApiParam({ name: 'id', required: true })
   @ApiQuery({ name: 'inactives', type: 'string', enum: ['true', 'false'], required: true })
+  @RoleDecorator('admin')
   @Get(':id')
   async byId(@Param('id') id: number, @Query() { inactives }: Pick<TFilterSpecies, 'inactives'>) {
     return await this.speciesService.findById(id, inactives);
   }
 
   @ApiOperation({ summary: 'Cadastrar uma nova espécie' })
-  @ApiCreatedResponse({ type: Species, description: 'Created' })
+  @ApiCreatedResponse({ type: TRegisteredSpecies, description: 'Created' })
   @ApiBadRequestResponse({
     description: 'Bad Request',
     schema: {
@@ -57,12 +113,24 @@ export class SpeciesController {
           type: 'number',
           example: 400,
         },
-        message: {
+        background: {
           type: 'string',
+          example: 'error',
+        },
+        message: {
           oneOf: [
-            { example: 'Arquivo não suportado' },
-            { example: 'Espécie já cadastrada' },
-            { example: 'Nome é obrigatório' },
+            {
+              type: 'string',
+              example: 'Arquivo não suportado'
+            },
+            {
+              type: 'string',
+              example: 'Espécie já cadastrada'
+            },
+            {
+              type: 'string',
+              example: 'Nome é obrigatório'
+            },
           ]
         },
       }
@@ -70,6 +138,7 @@ export class SpeciesController {
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({ type: TCreateSpecies })
+  @RoleDecorator('admin')
   @Post()
   @UseInterceptors(FileInterceptor('media', process.env.NODE_ENV === 'dev' ? config : {}))
   async create(@Body() data: TCreateSpecies, @UploadedFile() media?: Express.MulterS3.File) {
@@ -77,7 +146,7 @@ export class SpeciesController {
   }
 
   @ApiOperation({ summary: 'Editar uma espécie' })
-  @ApiOkResponse({ description: 'Success' })
+  @ApiOkResponse({ type: TRegisteredSpecies, description: 'Success' })
   @ApiBadRequestResponse({
     description: 'Bad Request',
     schema: {
@@ -87,12 +156,24 @@ export class SpeciesController {
           type: 'number',
           example: 400,
         },
-        message: {
+        background: {
           type: 'string',
+          example: 'error',
+        },
+        message: {
           oneOf: [
-            { example: 'Arquivo não suportado' },
-            { example: 'Espécie já cadastrada' },
-            { example: 'Nome é obrigatório' },
+            {
+              type: 'string',
+              example: 'Arquivo não suportado'
+            },
+            {
+              type: 'string',
+              example: 'Espécie já cadastrada'
+            },
+            {
+              type: 'string',
+              example: 'Nome é obrigatório'
+            },
           ]
         },
       }
@@ -107,6 +188,10 @@ export class SpeciesController {
           type: 'number',
           example: 404,
         },
+        background: {
+          type: 'string',
+          example: 'error',
+        },
         message: {
           type: 'string',
           example: 'Espécie não encontrada',
@@ -117,6 +202,7 @@ export class SpeciesController {
   @ApiConsumes('multipart/form-data')
   @ApiBody({ type: TUpdateSpecies })
   @ApiParam({ name: 'id', required: true })
+  @RoleDecorator('admin')
   @Put(':id')
   @UseInterceptors(FileInterceptor('media', process.env.NODE_ENV === 'dev' ? config : {}))
   async update(@Param('id') id: number, @Body() data: TUpdateSpecies, @UploadedFile() media?: Express.MulterS3.File) {
@@ -134,6 +220,10 @@ export class SpeciesController {
           type: 'number',
           example: 404,
         },
+        background: {
+          type: 'string',
+          example: 'error',
+        },
         message: {
           type: 'string',
           example: 'Espécie não encontrada',
@@ -143,6 +233,7 @@ export class SpeciesController {
   })
   @ApiParam({ name: 'id', required: true })
   @ApiQuery({ name: 'status', type: 'string', enum: ['true', 'false'], required: true })
+  @RoleDecorator('admin')
   @Delete(':id')
   @HttpCode(204)
   async activeInactive(@Param('id') id: number, @Query('status') status: 'true' | 'false') {

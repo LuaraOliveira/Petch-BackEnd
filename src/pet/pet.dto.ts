@@ -1,9 +1,11 @@
-import { ApiProperty, OmitType, PartialType, PickType } from '@nestjs/swagger';
+import { ApiProperty, OmitType, PartialType } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsEnum, IsNotEmpty } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional } from 'class-validator';
 
+import { Gift } from '../gift/gift.dto';
 import { Ong } from '../ong/ong.dto';
 import { Species } from '../species/species.dto';
+import { User } from '../user/user.dto';
 
 export class Pet {
   @ApiProperty({ type: 'integer', uniqueItems: true, readOnly: true })
@@ -36,9 +38,9 @@ export class Pet {
   weight: string;
 
   @ApiProperty({ type: 'string', enum: ['M', 'F'] })
-  @IsNotEmpty({ message: 'Gênero é obrigatório' })
-  @Transform(({ value }) => value.trim())
   @IsEnum(['M', 'F'], { message: 'Gênero inválido' })
+  @IsNotEmpty({ message: 'Gênero é obrigatório' })
+  @Transform(({ value }) => value.trim().toUpperCase())
   gender: string;
 
   @ApiProperty({ type: 'string' })
@@ -51,19 +53,29 @@ export class Pet {
 
   @ApiProperty({ type: 'number' })
   @IsNotEmpty({ message: 'ONG é obrigatória' })
-  @Transform(({ value }) => value.trim())
   ongId: number;
 
   @ApiProperty({ type: 'number' })
   @IsNotEmpty({ message: 'Espécie é obrigatória' })
-  @Transform(({ value }) => value.trim())
   speciesId: number;
+
+  @ApiProperty({ type: 'number', required: false })
+  userId: number;
+
+  @ApiProperty({ type: 'number', required: false })
+  giftId: number;
 
   @ApiProperty({ type: Ong, required: false })
   ong: Ong;
 
   @ApiProperty({ type: Species, required: false })
   species: Species;
+
+  @ApiProperty({ type: Gift, required: false })
+  gift: Gift;
+
+  @ApiProperty({ type: User, required: false })
+  user: User;
 
   @ApiProperty({ type: 'string', format: 'date', required: false, readOnly: true })
   createdAt: Date;
@@ -75,7 +87,7 @@ export class Pet {
   deletedAt: Date | null;
 }
 
-export class TCreatePet extends OmitType(Pet, ['id', 'createdAt', 'updatedAt', 'deletedAt', 'ong', 'species', 'image']) {
+export class TCreatePet extends OmitType(Pet, ['id', 'createdAt', 'updatedAt', 'deletedAt', 'ong', 'species', 'image', 'userId', 'giftId', 'user', 'gift']) {
   @ApiProperty({ type: 'string', format: 'binary' })
   media: string;
 }
@@ -84,23 +96,45 @@ export class TUpdatePet extends PartialType(TCreatePet) { }
 
 export class TFilterPet {
   @ApiProperty({ type: 'string', enum: ['true', 'false'], required: false })
+  @IsOptional()
+  @IsEnum(['true', 'false'], { message: 'Busca por inativos inválida' })
   inactives?: 'true' | 'false';
 
   @ApiProperty({ type: 'string', enum: ['true', 'false'], required: false })
+  @IsOptional()
+  @IsEnum(['true', 'false'], { message: 'Busca por castrado inválida' })
   cut?: 'true' | 'false';
 
   @ApiProperty({ type: 'string', enum: ['M', 'F'], required: false })
+  @IsOptional()
+  @IsEnum(['M', 'F'], { message: 'Busca por gênero inválido' })
   gender?: string;
 
   @ApiProperty({ type: 'string', required: false })
   uf?: string;
 
-  @ApiProperty({ type: 'number', required: false })
-  age?: number;
+  @ApiProperty({ type: 'string', required: false })
+  age?: string;
 
-  @ApiProperty({ type: 'number', required: false })
-  weight?: number;
+  @ApiProperty({ type: 'string', required: false })
+  weight?: string;
 
-  @ApiProperty({ type: 'number', required: false })
-  speciesId?: number;
+  @ApiProperty({ type: 'string', required: false })
+  speciesId?: string;
+}
+
+export class TChooseGift {
+  @ApiProperty({ type: 'number' })
+  id: number;
+
+  @ApiProperty({ type: 'number' })
+  giftId: number;
+}
+
+export class TRegisteredPet {
+  @ApiProperty({ type: 'string' })
+  message: string;
+
+  @ApiProperty({ type: 'string' })
+  background: string;
 }

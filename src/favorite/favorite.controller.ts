@@ -1,5 +1,5 @@
-import { Controller, Delete, Get, Param, Patch, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiForbiddenResponse, ApiOkResponse, ApiOperation, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
+import { Controller, Delete, HttpCode, Param, Patch, Req, UseGuards } from '@nestjs/common';
+import { ApiBadRequestResponse, ApiBearerAuth, ApiForbiddenResponse, ApiNoContentResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiParam, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
 import { Request } from 'express';
 
 import { TCreateFavorite } from './favorite.dto';
@@ -18,9 +18,13 @@ import { RoleGuard } from '../common/guards/role.guard';
         type: 'number',
         example: 401,
       },
+      background: {
+        type: 'string',
+        example: 'error',
+      },
       message: {
         type: 'string',
-        example: 'Unauthorized'
+        example: 'Não autorizado'
       }
     }
   }
@@ -33,6 +37,10 @@ import { RoleGuard } from '../common/guards/role.guard';
       statusCode: {
         type: 'number',
         example: 403,
+      },
+      background: {
+        type: 'string',
+        example: 'error',
       },
       message: {
         type: 'string',
@@ -50,22 +58,80 @@ export class FavoriteController {
     private favoriteService: FavoriteService
   ) { }
 
-  @Get()
-  async index() {
-    return await this.favoriteService.get();
-  }
-
   @ApiOperation({ summary: 'Salvar um pet na lista de favoritos' })
   @ApiOkResponse({ description: 'Success' })
+  @ApiBadRequestResponse({
+    description: 'Bad Request',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: {
+          type: 'number',
+          example: 400,
+        },
+        background: {
+          type: 'string',
+          example: 'error',
+        },
+        message: {
+          type: 'string',
+          example: 'Pet já está salvo em seus favoritos'
+        },
+      }
+    }
+  })
+  @ApiNotFoundResponse({
+    description: 'Not Found',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: {
+          type: 'number',
+          example: 404,
+        },
+        background: {
+          type: 'string',
+          example: 'error',
+        },
+        message: {
+          type: 'string',
+          example: 'Pet não encontrado',
+        },
+      }
+    }
+  })
+  @ApiParam({ name: 'petId', type: 'number', required: true })
   @Patch(':petId')
   async create(@Param() { petId }: TCreateFavorite, @Req() req: Request) {
     return await this.favoriteService.post(petId, req.user.id);
   }
 
   @ApiOperation({ summary: 'Remover um pet da lista de favoritos' })
-  @ApiOkResponse({ description: 'Success' })
-  @Delete(':petId')
-  async remove(@Param() { petId }: TCreateFavorite, @Req() req: Request) {
-    return await this.favoriteService.remove(petId, req.user.id);
+  @ApiNoContentResponse({ description: 'No Content' })
+  @ApiNotFoundResponse({
+    description: 'Not Found',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: {
+          type: 'number',
+          example: 404,
+        },
+        background: {
+          type: 'string',
+          example: 'error',
+        },
+        message: {
+          type: 'string',
+          example: 'Favorito não encontrado',
+        },
+      }
+    }
+  })
+  @ApiParam({ name: 'id', type: 'number', required: true })
+  @Delete(':id')
+  @HttpCode(204)
+  async remove(@Param('id') id: number, @Req() req: Request) {
+    return await this.favoriteService.remove(id, req.user.id);
   }
 }

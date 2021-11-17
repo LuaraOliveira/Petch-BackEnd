@@ -30,6 +30,10 @@ export class SolicitationTypesController {
           type: 'number',
           example: 404,
         },
+        background: {
+          type: 'string',
+          example: 'error',
+        },
         message: {
           type: 'string',
           example: 'Tipo de solicitação não encontrada',

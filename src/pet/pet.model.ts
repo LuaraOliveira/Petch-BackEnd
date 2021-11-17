@@ -2,6 +2,7 @@ import { BeforeSave, BelongsTo, Column, DataType, DefaultScope, ForeignKey, HasM
 
 import { Dislike } from '../dislike/dislike.model';
 import { Favorite } from '../favorite/favorite.model';
+import { Gift } from '../gift/gift.model';
 import { Ong } from '../ong/ong.model';
 import { Species } from '../species/species.model';
 import { User } from '../user/user.model';
@@ -81,6 +82,12 @@ export class Pet extends Model {
   })
   cut: boolean;
 
+  @Column({
+    type: DataType.DATEONLY,
+    defaultValue: null
+  })
+  adoptedAt: Date;
+
   @ForeignKey(() => User)
   @Column
   userId: number;
@@ -93,6 +100,10 @@ export class Pet extends Model {
   @Column({ allowNull: false })
   speciesId: number;
 
+  @ForeignKey(() => Gift)
+  @Column
+  giftId: number;
+
   @BelongsTo(() => User)
   user: User;
 
@@ -101,6 +112,9 @@ export class Pet extends Model {
 
   @BelongsTo(() => Species)
   species: Species;
+
+  @BelongsTo(() => Gift)
+  gift: Gift;
 
   @HasMany(() => Dislike)
   dislike: Dislike[];

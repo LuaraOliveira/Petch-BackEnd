@@ -1,4 +1,4 @@
-import { forwardRef, HttpException, Inject, Injectable } from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { Op as $ } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
@@ -6,7 +6,7 @@ import { Sequelize } from 'sequelize-typescript';
 import { TCreateSpecies, TFilterSpecies, TUpdateSpecies } from './species.dto';
 import { Species } from './species.model';
 import { UploadService } from '../config/upload.service';
-import { convertBool, trimObj } from '../utils';
+import { capitalizeFirstLetter, convertBool, trimObj } from '../utils';
 
 @Injectable()
 export class SpeciesService {
@@ -16,6 +16,14 @@ export class SpeciesService {
     private uploadService: UploadService,
     private sequelize: Sequelize
   ) { }
+
+  async all() {
+    return await this.speciesModel.findAll();
+  }
+
+  async dash() {
+    return await this.speciesModel.scope('petsBySpecies').findAll();
+  }
 
   async get(query?: TFilterSpecies) {
     trimObj(query);
@@ -45,28 +53,29 @@ export class SpeciesService {
   async findByName(name: string) {
     return await this.speciesModel.findOne({
       where: {
-        name: name.normalize().trim().toLowerCase()
+        name: capitalizeFirstLetter(name).trim()
       }
     });
   }
 
   async post(data: TCreateSpecies, media?: Express.MulterS3.File) {
     trimObj(data);
+
+    if (await this.findByName(data.name)) throw new HttpException('Espécie já cadastrada', 400);
+
+    if (media) {
+      const image = (await this.uploadService.uploadFile(media)).url;
+      Object.assign(data, { image });
+    }
+
     const transaction = await this.sequelize.transaction();
 
     try {
-      if (await this.findByName(data.name)) throw new HttpException('Espécie já cadastrada', 400);
-
-      if (media) {
-        const image = (await this.uploadService.uploadFile(media)).url;
-        Object.assign(data, { image });
-      }
-
-      const species = await this.speciesModel.create({ ...data }, { transaction });
+      await this.speciesModel.create({ ...data }, { transaction });
 
       await transaction.commit();
 
-      return species;
+      return { message: 'Espécie cadastrada com sucesso', background: 'success' };
     } catch (error) {
       await transaction.rollback();
       throw new HttpException(error, 400);
@@ -75,21 +84,23 @@ export class SpeciesService {
 
   async put(id: number, data: TUpdateSpecies, media?: Express.MulterS3.File) {
     trimObj(data);
+    const species = await this.findById(id);
+
+    if (await this.findByName(data.name)) throw new HttpException('Espécie já cadastrada', 400);
+
+    if (media) {
+      const image = (await this.uploadService.uploadFile(media)).url;
+      Object.assign(data, { image });
+    }
+
     const transaction = await this.sequelize.transaction();
 
     try {
-      const species = await this.findById(id);
-
-      if (await this.findByName(data.name)) throw new HttpException('Espécie já cadastrada', 400);
-
-      if (media) {
-        const image = (await this.uploadService.uploadFile(media)).url;
-        Object.assign(data, { image });
-      }
-
       await species.update({ ...data }, { transaction });
 
       await transaction.commit();
+
+      return { message: 'Espécie editada com sucesso', background: 'success' };
     } catch (error) {
       await transaction.rollback();
       throw new HttpException(error, 400);
@@ -99,9 +110,18 @@ export class SpeciesService {
   async activeInactive(id: number, status: 'true' | 'false') {
     const st = convertBool(status);
 
-    const specie = await this.findById(id, 'true');
+    const specie = await this.speciesModel.findOne({
+      where: { id },
+      paranoid: false,
+      include: { all: true, paranoid: false }
+    });
 
-    if (!st) return await specie.destroy();
-    return await specie.restore();
+    if (!st) {
+      await specie.destroy();
+      return specie.pets.map(pet => !pet.userId && pet.destroy());
+    }
+
+    await specie.restore();
+    return specie.pets.map(pet => pet.restore());
   }
 }

@@ -1,10 +1,8 @@
-import { Body, Controller, HttpCode, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBadRequestResponse, ApiBody, ApiConsumes, ApiCreatedResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, HttpCode, Post } from '@nestjs/common';
+import { ApiBadRequestResponse, ApiBody, ApiCreatedResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
-import { TForgotPassword, TGoogleLogin, TLogin, TResetPassword } from './auth.dto';
+import { TForgotPassword, TGoogleLogin, TLogin, TResetPassword, TReturnLogin } from './auth.dto';
 import { AuthService } from './auth.service';
-import { config } from '../config/multer';
 import { TCreateUser, User } from '../user/user.dto';
 
 @ApiTags('Auth')
@@ -15,22 +13,7 @@ export class AuthController {
   ) { }
 
   @ApiOperation({ summary: 'Efetuar login com e-mail e senha' })
-  @ApiOkResponse({
-    description: 'Success',
-    schema: {
-      type: 'object',
-      properties: {
-        token: {
-          type: 'string',
-          example: '456fda'
-        },
-        role: {
-          type: 'string',
-          example: 'Admin'
-        },
-      }
-    }
-  })
+  @ApiOkResponse({ type: TReturnLogin, description: 'Success' })
   @ApiBadRequestResponse({
     description: 'Bad Request',
     schema: {
@@ -40,13 +23,28 @@ export class AuthController {
           type: 'number',
           example: 400,
         },
-        message: {
+        background: {
           type: 'string',
+          example: 'error',
+        },
+        message: {
           oneOf: [
-            { example: 'Campo "X" é obrigatório' },
-            { example: 'As credenciais estão incorretas' },
-            { example: 'E-mail inválido' },
-            { example: 'E-mail não verificado' },
+            {
+              type: 'string',
+              example: 'Campo "X" é obrigatório'
+            },
+            {
+              type: 'string',
+              example: 'As credenciais estão incorretas'
+            },
+            {
+              type: 'string',
+              example: 'E-mail inválido'
+            },
+            {
+              type: 'string',
+              example: 'E-mail não verificado'
+            },
           ]
         },
       }
@@ -60,22 +58,7 @@ export class AuthController {
   }
 
   @ApiOperation({ summary: 'Efetuar login com Google' })
-  @ApiOkResponse({
-    description: 'Success',
-    schema: {
-      type: 'object',
-      properties: {
-        token: {
-          type: 'string',
-          example: '456fda'
-        },
-        role: {
-          type: 'string',
-          example: 'Admin'
-        },
-      }
-    }
-  })
+  @ApiOkResponse({ type: TReturnLogin, description: 'Success' })
   @ApiBadRequestResponse({
     description: 'Bad Request',
     schema: {
@@ -85,11 +68,20 @@ export class AuthController {
           type: 'number',
           example: 400,
         },
-        message: {
+        background: {
           type: 'string',
+          example: 'error',
+        },
+        message: {
           oneOf: [
-            { example: 'Campo "X" é obrigatório' },
-            { example: 'E-mail inválido' },
+            {
+              type: 'string',
+              example: 'Campo "X" é obrigatório'
+            },
+            {
+              type: 'string',
+              example: 'E-mail inválido'
+            },
           ]
         },
       }
@@ -103,6 +95,10 @@ export class AuthController {
         statusCode: {
           type: 'number',
           example: 404
+        },
+        background: {
+          type: 'string',
+          example: 'error',
         },
         message: {
           type: 'string',
@@ -129,31 +125,65 @@ export class AuthController {
           type: 'number',
           example: 400,
         },
-        message: {
+        background: {
           type: 'string',
+          example: 'error',
+        },
+        message: {
           oneOf: [
-            { example: 'Arquivo não suportado' },
-            { example: 'Usuário já cadastrado' },
-            { example: 'CEP inválido' },
-            { example: 'CPF inválido' },
-            { example: 'E-mail inválido' },
-            { example: 'Número de telefone/celular inválido' },
-            { example: 'Senha muito curta' },
-            { example: 'Senha precisa ter uma letra maiúscula, uma letra minúscula, um caractere especial e um número' },
-            { example: 'Senhas não correspondem' },
-            { example: 'Data de nascimento inválida' },
-            { example: 'Você não tem a idade mínima de 18 anos' },
+            {
+              type: 'string',
+              example: 'Usuário já cadastrado'
+            },
+            {
+              type: 'string',
+              example: 'CEP inválido'
+            },
+            {
+              type: 'string',
+              example: 'Gênero inválido'
+            },
+            {
+              type: 'string',
+              example: 'CPF inválido'
+            },
+            {
+              type: 'string',
+              example: 'E-mail inválido'
+            },
+            {
+              type: 'string',
+              example: 'Número de telefone/celular inválido'
+            },
+            {
+              type: 'string',
+              example: 'Senha precisa conter, no mínimo, 8 caracteres'
+            },
+            {
+              type: 'string',
+              example: 'Senha precisa ter uma letra maiúscula, uma letra minúscula, um caractere especial e um número'
+            },
+            {
+              type: 'string',
+              example: 'Senhas não correspondem'
+            },
+            {
+              type: 'string',
+              example: 'Data de nascimento inválida'
+            },
+            {
+              type: 'string',
+              example: 'Você não tem a idade mínima de 18 anos'
+            },
           ]
         },
       }
     }
   })
-  @ApiConsumes('multipart/form-data')
   @ApiBody({ type: TCreateUser })
   @Post('register')
-  @UseInterceptors(FileInterceptor('media', process.env.NODE_ENV === 'dev' ? config : {}))
-  async register(@Body() data: TCreateUser, @UploadedFile() media: Express.MulterS3.File) {
-    return await this.authService.register(data, media);
+  async register(@Body() data: TCreateUser) {
+    return await this.authService.register(data);
   }
 
   @ApiOperation({ summary: 'Solicitar troca de senha por esquecimento' })
@@ -167,11 +197,20 @@ export class AuthController {
           type: 'number',
           example: 400,
         },
-        message: {
+        background: {
           type: 'string',
+          example: 'error',
+        },
+        message: {
           oneOf: [
-            { example: 'E-mail é obrigatório' },
-            { example: 'E-mail inválido' },
+            {
+              type: 'string',
+              example: 'E-mail é obrigatório'
+            },
+            {
+              type: 'string',
+              example: 'E-mail inválido'
+            },
           ]
         },
       }
@@ -185,6 +224,10 @@ export class AuthController {
         statusCode: {
           type: 'number',
           example: 404
+        },
+        background: {
+          type: 'string',
+          example: 'error',
         },
         message: {
           type: 'string',
@@ -200,7 +243,7 @@ export class AuthController {
     return await this.authService.forgotPassword(data);
   }
 
-  @ApiOperation({ summary: 'Reiniciar a senha a partir de seu esquecimento' })
+  @ApiOperation({ summary: 'Redefinir a senha a partir de seu esquecimento' })
   @ApiOkResponse({ description: 'Success' })
   @ApiBadRequestResponse({
     description: 'Bad Request',
@@ -211,17 +254,44 @@ export class AuthController {
           type: 'number',
           example: 400,
         },
-        message: {
+        background: {
           type: 'string',
+          example: 'error',
+        },
+        message: {
           oneOf: [
-            { example: 'Campo "X" é obrigatório' },
-            { example: 'E-mail inválido' },
-            { example: 'Token inválido' },
-            { example: 'Token expirou' },
-            { example: 'Nova senha não pode ser igual a senha atual' },
-            { example: 'Nova senha e confirmação de senha não correspodem' },
-            { example: 'Senha muito curta' },
-            { example: 'Senha precisa ter uma letra maiúscula, uma letra minúscula, um caractere especial e um número' },
+            {
+              type: 'string',
+              example: 'Campo "X" é obrigatório'
+            },
+            {
+              type: 'string',
+              example: 'E-mail inválido'
+            },
+            {
+              type: 'string',
+              example: 'Token inválido'
+            },
+            {
+              type: 'string',
+              example: 'Token expirou'
+            },
+            {
+              type: 'string',
+              example: 'Nova senha não pode ser igual a senha atual'
+            },
+            {
+              type: 'string',
+              example: 'Nova senha e confirmação de senha não correspodem'
+            },
+            {
+              type: 'string',
+              example: 'Senha precisa conter, no mínimo, 8 caracteres'
+            },
+            {
+              type: 'string',
+              example: 'Senha precisa ter uma letra maiúscula, uma letra minúscula, um caractere especial e um número'
+            },
           ]
         },
       }
@@ -235,6 +305,10 @@ export class AuthController {
         statusCode: {
           type: 'number',
           example: 404
+        },
+        background: {
+          type: 'string',
+          example: 'error',
         },
         message: {
           type: 'string',

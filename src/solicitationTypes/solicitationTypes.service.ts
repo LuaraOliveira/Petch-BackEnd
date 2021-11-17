@@ -2,6 +2,7 @@ import { HttpException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 
 import { SolicitationTypes } from './solicitationTypes.model';
+import { capitalizeFirstLetter } from '../utils';
 
 @Injectable()
 export class SolicitationTypesService {
@@ -9,6 +10,18 @@ export class SolicitationTypesService {
     @InjectModel(SolicitationTypes)
     private readonly solicitationTypesModel: typeof SolicitationTypes
   ) { }
+
+  async createSolicitationTypes() {
+    await this.solicitationTypesModel.bulkCreate([
+      { id: 1, name: "Elogio" },
+      { id: 2, name: "Reclamação" },
+      { id: 3, name: "Dúvida" },
+    ])
+  }
+
+  async dash() {
+    return await this.solicitationTypesModel.scope('dash').findAll();
+  }
 
   async get(name?: string) {
     if (name) return await this.findByName(name);
@@ -27,7 +40,7 @@ export class SolicitationTypesService {
   async findByName(name: string) {
     return await this.solicitationTypesModel.findOne({
       where: {
-        name: name.normalize().trim().toLowerCase()
+        name: capitalizeFirstLetter(name).trim()
       }
     });
   }

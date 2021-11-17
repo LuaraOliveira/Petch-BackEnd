@@ -21,9 +21,9 @@ export class User {
   avatar?: string;
 
   @ApiProperty({ type: 'string', uniqueItems: true })
+  @IsEmail({}, { message: 'E-mail inválido' })
   @IsNotEmpty({ message: 'E-mail é obrigatório' })
   @Transform(({ value }) => value.trim())
-  @IsEmail({}, { message: 'E-mail inválido' })
   email: string;
 
   @ApiProperty({ type: 'boolean', default: false })
@@ -41,21 +41,21 @@ export class User {
   cpf: string;
 
   @ApiProperty({ type: 'string' })
+  @IsDateString({}, { message: 'Data de nascimento inválida' })
   @IsNotEmpty({ message: 'Data de nascimento é obrigatória' })
   @Transform(({ value }) => value.trim())
-  @IsDateString({}, { message: 'Data de nascimento inválida' })
   birthday: string;
 
   @ApiProperty({ type: 'string', enum: ['M', 'F', 'O'] })
-  @IsNotEmpty({ message: 'Gênero é obrigatório' })
-  @Transform(({ value }) => value.trim())
   @IsEnum(['M', 'F', 'O'], { message: 'Gênero inválido' })
+  @IsNotEmpty({ message: 'Gênero é obrigatório' })
+  @Transform(({ value }) => value.trim().toUpperCase())
   gender: string;
 
   @ApiProperty({ type: 'string' })
+  @IsPostalCode('BR', { message: 'CEP inválido' })
   @IsNotEmpty({ message: 'CEP é obrigatório' })
   @Transform(({ value }) => value.trim().replace(/(\d{5})(\d{3})/, '$1-$2'))
-  @IsPostalCode('BR', { message: 'CEP inválido' })
   cep: string;
 
   @ApiProperty({ type: 'string' })
@@ -82,9 +82,9 @@ export class User {
   uf: string;
 
   @ApiProperty({ type: 'string' })
+  @IsPhoneNumber('BR', { message: 'Telefone inválido' })
   @IsNotEmpty({ message: 'Telefone é obrigatório' })
   @Transform(({ value }) => value.trim())
-  @IsPhoneNumber('BR', { message: 'Telefone inválido' })
   phone: string;
 
   @ApiProperty({ type: 'string', required: false })
@@ -122,36 +122,27 @@ export class IndexUser extends PickType(User, ['id', 'name', 'cpf', 'email', 'av
 }
 
 export class TCreateUser extends OmitType(User, ['createdAt', 'updatedAt', 'deletedAt', 'id', 'hash', 'avatar', 'tokenResetPassword', 'tokenResetPasswordExpires', 'tokenVerificationEmail', 'emailVerified', 'roleId', 'role']) {
-  @ApiProperty({ type: 'string', required: false })
-  @ValidateIf((_, value) => value)
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[-_@#$!%+*=()?&,.:;?|])[A-Za-z\d-_@#$!%+*=()?&,.:;?|]/, { message: 'Senha precisa ter uma letra maiúscula, uma letra minúscula, um caractere especial e um número' })
-  @MinLength(8, { message: 'Senha muito curta' })
-  password: string;
-
-  @ApiProperty({ type: 'string', required: false })
-  @ValidateIf((obj, _) => obj.password)
-  @Match('password', { message: 'Senhas não correspondem' })
-  confirmPassword: string;
-
   @ApiProperty({ type: 'string', format: 'binary', required: false })
   media?: string;
+
+  password?: string;
 }
 
-export class TUpdateUser extends OmitType(PartialType(TCreateUser), ['googleId', 'password', 'confirmPassword']) {
+export class TUpdateUser extends OmitType(PartialType(TCreateUser), ['googleId']) {
   @ApiProperty({ type: 'string', required: false })
   oldPassword?: string;
 
   @ApiProperty({ type: 'string', required: false })
   @ValidateIf((obj, _) => obj.oldPassword)
-  @IsNotEmpty({ message: 'Nova senha é obrigatória' })
   @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[-_@#$!%+*=()?&,.:;?|])[A-Za-z\d-_@#$!%+*=()?&,.:;?|]/, { message: 'Senha precisa ter uma letra maiúscula, uma letra minúscula, um caractere especial e um número' })
-  @MinLength(8, { message: 'Senha muito curta' })
+  @MinLength(8, { message: 'Senha precisa conter, no mínimo, 8 caracteres' })
+  @IsNotEmpty({ message: 'Nova senha é obrigatória' })
   password?: string;
 
   @ApiProperty({ type: 'string', required: false })
   @ValidateIf((obj, _) => obj.password)
-  @IsNotEmpty({ message: 'Confirmação de senha é obrigatória' })
   @Match('password', { message: 'Nova senha e confirmação de senha não correspondem' })
+  @IsNotEmpty({ message: 'Confirmação de senha é obrigatória' })
   confirmPassword?: string;
 }
 
@@ -168,13 +159,21 @@ export class TFilterUser {
 
 export class TConfirmRegister {
   @ApiProperty({ type: 'string' })
+  @IsEmail({}, { message: 'E-mail inválido' })
   @IsNotEmpty({ message: 'E-mail é obrigatório' })
   @Transform(({ value }) => value.trim())
-  @IsEmail({}, { message: 'E-mail inválido' })
   email: string;
 
   @ApiProperty({ type: 'string' })
   @IsNotEmpty({ message: 'Token é obrigatório' })
   @Transform(({ value }) => value.trim())
   token: string;
+}
+
+export class TRegisteredUser {
+  @ApiProperty({ type: 'string' })
+  message: string;
+
+  @ApiProperty({ type: 'string' })
+  background: string;
 }

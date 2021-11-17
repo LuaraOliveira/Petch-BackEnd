@@ -17,6 +17,10 @@ export class PartnerService {
     private uploadService: UploadService
   ) { }
 
+  async all() {
+    return await this.partnerModel.findAll();
+  }
+
   async get(query?: TFilterPartner) {
     trimObj(query);
     const where = {};
@@ -58,21 +62,22 @@ export class PartnerService {
 
   async post(data: TCreatePartner, media?: Express.MulterS3.File) {
     trimObj(data);
+
+    if (await this.findByEmail(data.email) || await this.findByCNPJ(data.cnpj)) throw new HttpException('Parceiro já cadastrado', 400);
+
+    if (media) {
+      const image = (await this.uploadService.uploadFile(media)).url;
+      Object.assign(data, { image });
+    }
+
     const transaction = await this.sequelize.transaction();
 
     try {
-      if (await this.findByEmail(data.email) || await this.findByCNPJ(data.cnpj)) throw new HttpException('Parceiro já cadastrado', 400);
-
-      if (media) {
-        const image = (await this.uploadService.uploadFile(media)).url;
-        Object.assign(data, { image });
-      }
-
-      const partner = await this.partnerModel.create({ ...data }, { transaction });
+      await this.partnerModel.create({ ...data }, { transaction });
 
       await transaction.commit();
 
-      return partner;
+      return { message: 'Parceiro cadastrado com sucesso', background: 'success' };
     } catch (error) {
       await transaction.rollback();
       throw new HttpException(error, 400);
@@ -81,27 +86,30 @@ export class PartnerService {
 
   async put(id: number, data: TUpdatePartner, media?: Express.MulterS3.File) {
     trimObj(data);
+
+    const partner = await this.findById(id);
+
+    if (data.email && data.email !== partner.email) {
+      if (await this.findByEmail(data.email)) throw new HttpException('Parceiro já cadastrado', 400);
+    }
+
+    if (data.cnpj && data.cnpj !== partner.cnpj) {
+      if (await this.findByCNPJ(data.cnpj)) throw new HttpException('Parceiro já cadastrado', 400);
+    }
+
+    if (media) {
+      const image = (await this.uploadService.uploadFile(media)).url;
+      Object.assign(data, { image });
+    }
+
     const transaction = await this.sequelize.transaction();
 
     try {
-      const partner = await this.findById(id);
-
-      if (data.email && data.email !== partner.email) {
-        if (await this.findByEmail(data.email)) throw new HttpException('Parceiro já cadastrado', 400);
-      }
-
-      if (data.cnpj && data.cnpj !== partner.cnpj) {
-        if (await this.findByCNPJ(data.cnpj)) throw new HttpException('Parceiro já cadastrado', 400);
-      }
-
-      if (media) {
-        const image = (await this.uploadService.uploadFile(media)).url;
-        Object.assign(data, { image });
-      }
-
       await partner.update({ ...data }, { transaction });
 
       await transaction.commit();
+
+      return { message: 'Parceiro editado com sucesso', background: 'success' };
     } catch (error) {
       await transaction.rollback();
       throw new HttpException(error, 400);

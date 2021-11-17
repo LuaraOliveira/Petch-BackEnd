@@ -1,9 +1,9 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBadRequestResponse, ApiBearerAuth, ApiBody, ApiConsumes, ApiCreatedResponse, ApiForbiddenResponse, ApiNoContentResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiParam, ApiQuery, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
+import { ApiBadRequestResponse, ApiBearerAuth, ApiBody, ApiConsumes, ApiCreatedResponse, ApiExcludeEndpoint, ApiForbiddenResponse, ApiNoContentResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiParam, ApiQuery, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
 import { Request } from 'express';
 
-import { Pet, TCreatePet, TFilterPet, TUpdatePet } from './pet.dto';
+import { Pet, TChooseGift, TCreatePet, TFilterPet, TRegisteredPet, TUpdatePet } from './pet.dto';
 import { PetService } from './pet.service';
 import { RoleDecorator } from '../common/decorators/role.decorator';
 import { JwtAuthGuard } from '../common/guards/auth.guard';
@@ -20,9 +20,13 @@ import { config } from '../config/multer';
         type: 'number',
         example: 401,
       },
+      background: {
+        type: 'string',
+        example: 'error',
+      },
       message: {
         type: 'string',
-        example: 'Unauthorized'
+        example: 'Não autorizado'
       }
     }
   }
@@ -35,6 +39,10 @@ import { config } from '../config/multer';
       statusCode: {
         type: 'number',
         example: 403,
+      },
+      background: {
+        type: 'string',
+        example: 'error',
       },
       message: {
         type: 'string',
@@ -51,13 +59,27 @@ export class PetController {
     private petService: PetService
   ) { }
 
+  @ApiExcludeEndpoint()
+  @Get('all')
+  async all() {
+    return await this.petService.all();
+  }
+
   @ApiOperation({ summary: 'Procurar pet para adoção e listar todos os pets' })
   @ApiOkResponse({ type: [Pet], description: 'Success' })
   @ApiQuery({ type: TFilterPet, required: false })
   @Get()
   async index(@Req() req: Request, @Query() query?: TFilterPet) {
     if (req.user.role.name === 'Adotante') return await this.petService.find(req.user.id, query);
-    return await this.petService.get(req.user.id);
+    return await this.petService.get(query);
+  }
+
+  @ApiOperation({ summary: 'Listar pets adotados pelo usuário' })
+  @ApiOkResponse({ type: [Pet], description: 'Success' })
+  @RoleDecorator('adotante')
+  @Get('mypets')
+  async myPets(@Req() req: Request) {
+    return await this.petService.myPets(req.user.id);
   }
 
   @ApiOperation({ summary: 'Listar pets favoritos do usuário logado' })
@@ -79,6 +101,10 @@ export class PetController {
           type: 'number',
           example: 404,
         },
+        background: {
+          type: 'string',
+          example: 'error',
+        },
         message: {
           type: 'string',
           example: 'Pet não encontrado',
@@ -94,7 +120,7 @@ export class PetController {
   }
 
   @ApiOperation({ summary: 'Cadastrar um pet' })
-  @ApiCreatedResponse({ type: Pet, description: 'Created' })
+  @ApiCreatedResponse({ type: TRegisteredPet, description: 'Created' })
   @ApiBadRequestResponse({
     description: 'Bad Request',
     schema: {
@@ -104,13 +130,32 @@ export class PetController {
           type: 'number',
           example: 400,
         },
-        message: {
+        background: {
           type: 'string',
+          example: 'error',
+        },
+        message: {
           oneOf: [
-            { example: 'Arquivo não suportado' },
-            { example: 'Campo "X" é obrigatório' },
-            { example: 'Idade inválida' },
-            { example: 'Gênero inválido' },
+            {
+              type: 'string',
+              example: 'Arquivo não suportado'
+            },
+            {
+              type: 'string',
+              example: 'Campo "X" é obrigatório'
+            },
+            {
+              type: 'string',
+              example: 'Idade inválida'
+            },
+            {
+              type: 'string',
+              example: 'Gênero inválido'
+            },
+            {
+              type: 'string',
+              example: 'Peso inválido'
+            },
           ]
         },
       }
@@ -125,11 +170,20 @@ export class PetController {
           type: 'number',
           example: 404,
         },
-        message: {
+        background: {
           type: 'string',
+          example: 'error',
+        },
+        message: {
           oneOf: [
-            { example: 'ONG não encontrada' },
-            { example: 'Espécie não encontrada' },
+            {
+              type: 'string',
+              example: 'ONG não encontrada'
+            },
+            {
+              type: 'string',
+              example: 'Espécie não encontrada'
+            },
           ]
         },
       }
@@ -145,7 +199,7 @@ export class PetController {
   }
 
   @ApiOperation({ summary: 'Adotar um pet' })
-  @ApiCreatedResponse({ type: Pet, description: 'Created' })
+  @ApiOkResponse({ type: TRegisteredPet, description: 'Success' })
   @ApiBadRequestResponse({
     description: 'Bad Request',
     schema: {
@@ -155,13 +209,28 @@ export class PetController {
           type: 'number',
           example: 400,
         },
-        message: {
+        background: {
           type: 'string',
+          example: 'error',
+        },
+        message: {
           oneOf: [
-            { example: 'Arquivo não suportado' },
-            { example: 'Campo "X" é obrigatório' },
-            { example: 'Idade inválida' },
-            { example: 'Gênero inválido' },
+            {
+              type: 'string',
+              example: 'Arquivo não suportado'
+            },
+            {
+              type: 'string',
+              example: 'Campo "X" é obrigatório'
+            },
+            {
+              type: 'string',
+              example: 'Idade inválida'
+            },
+            {
+              type: 'string',
+              example: 'Gênero inválido'
+            },
           ]
         },
       }
@@ -176,11 +245,20 @@ export class PetController {
           type: 'number',
           example: 404,
         },
-        message: {
+        background: {
           type: 'string',
+          example: 'error',
+        },
+        message: {
           oneOf: [
-            { example: 'ONG não encontrada' },
-            { example: 'Espécie não encontrada' },
+            {
+              type: 'string',
+              example: 'ONG não encontrada'
+            },
+            {
+              type: 'string',
+              example: 'Espécie não encontrada'
+            },
           ]
         },
       }
@@ -192,8 +270,46 @@ export class PetController {
     return await this.petService.adopt(req.user, id);
   }
 
-  @ApiOperation({ summary: 'Editar um pet' })
+  @ApiOperation({ summary: 'Adotante escolhe um brinde após a adoção' })
   @ApiOkResponse({ description: 'Success' })
+  @ApiNotFoundResponse({
+    description: 'Not Found',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: {
+          type: 'number',
+          example: 404,
+        },
+        background: {
+          type: 'string',
+          example: 'error',
+        },
+        message: {
+          oneOf: [
+            {
+              type: 'string',
+              example: 'Brinde não encontrado'
+            },
+            {
+              type: 'string',
+              example: 'Pet não encontrado'
+            },
+          ]
+        },
+      }
+    }
+  })
+  @ApiParam({ name: 'id', type: 'number', required: true })
+  @ApiParam({ name: 'giftId', type: 'number', required: true })
+  @RoleDecorator('adotante')
+  @Patch(':id/gift/:giftId')
+  async chooseGift(@Req() req: Request, @Param() { id, giftId }: TChooseGift) {
+    return await this.petService.chooseGift(req.user, id, giftId);
+  }
+
+  @ApiOperation({ summary: 'Editar um pet' })
+  @ApiOkResponse({ type: TRegisteredPet, description: 'Success' })
   @ApiBadRequestResponse({
     description: 'Bad Request',
     schema: {
@@ -203,13 +319,32 @@ export class PetController {
           type: 'number',
           example: 400,
         },
-        message: {
+        background: {
           type: 'string',
+          example: 'error',
+        },
+        message: {
           oneOf: [
-            { example: 'Arquivo não suportado' },
-            { example: 'Campo "X" é obrigatório' },
-            { example: 'Idade inválida' },
-            { example: 'Gênero inválido' },
+            {
+              type: 'string',
+              example: 'Arquivo não suportado'
+            },
+            {
+              type: 'string',
+              example: 'Campo "X" é obrigatório'
+            },
+            {
+              type: 'string',
+              example: 'Idade inválida'
+            },
+            {
+              type: 'string',
+              example: 'Gênero inválido'
+            },
+            {
+              type: 'string',
+              example: 'Peso inválido'
+            },
           ]
         },
       }
@@ -224,12 +359,24 @@ export class PetController {
           type: 'number',
           example: 404,
         },
-        message: {
+        background: {
           type: 'string',
+          example: 'error',
+        },
+        message: {
           oneOf: [
-            { example: 'Pet não encontrado' },
-            { example: 'ONG não encontrada' },
-            { example: 'Espécie não encontrada' },
+            {
+              type: 'string',
+              example: 'Pet não encontrado'
+            },
+            {
+              type: 'string',
+              example: 'ONG não encontrada'
+            },
+            {
+              type: 'string',
+              example: 'Espécie não encontrada'
+            },
           ]
         },
       }
@@ -237,7 +384,7 @@ export class PetController {
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({ type: TUpdatePet })
-  @ApiParam({ name: 'id', required: true })
+  @ApiParam({ name: 'id', type: 'number', required: true })
   @RoleDecorator('admin')
   @Put(':id')
   @UseInterceptors(FileInterceptor('media', process.env.NODE_ENV === 'dev' ? config : {}))
@@ -255,6 +402,10 @@ export class PetController {
           type: 'number',
           example: 404,
         },
+        background: {
+          type: 'string',
+          example: 'error',
+        },
         message: {
           type: 'string',
           example: 'Pet não encontrado',
@@ -264,6 +415,7 @@ export class PetController {
   })
   @ApiParam({ name: 'id', required: true })
   @ApiQuery({ name: 'status', type: 'string', enum: ['true', 'false'], required: true })
+  @RoleDecorator('admin')
   @Delete(':id')
   @HttpCode(204)
   async activeInactive(@Param('id') id: number, @Query('status') status: 'true' | 'false') {

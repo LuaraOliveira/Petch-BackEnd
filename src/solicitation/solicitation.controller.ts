@@ -1,57 +1,69 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
-import { ApiBadRequestResponse, ApiBearerAuth, ApiBody, ApiConsumes, ApiCreatedResponse, ApiForbiddenResponse, ApiNoContentResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiParam, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { ApiBadRequestResponse, ApiBearerAuth, ApiBody, ApiCreatedResponse, ApiExcludeEndpoint, ApiForbiddenResponse, ApiNoContentResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiParam, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
 import { Request } from 'express';
 
-import { Solicitation, TCreateSolicitation } from './solicitation.dto';
+import { Solicitation, TCreateSolicitation, TRegisteredSolicitation } from './solicitation.dto';
 import { SolicitationService } from './solicitation.service';
 import { RoleDecorator } from '../common/decorators/role.decorator';
-import { JwtAuthGuard, OptionalAuthGuard } from '../common/guards/auth.guard';
+import { JwtAuthGuard } from '../common/guards/auth.guard';
 import { RoleGuard } from '../common/guards/role.guard';
-import { config } from '../config/multer';
 
 @ApiTags('Solicitations')
+@ApiUnauthorizedResponse({
+  schema: {
+    type: 'object',
+    properties: {
+      statusCode: {
+        type: 'number',
+        example: 401,
+      },
+      background: {
+        type: 'string',
+        example: 'error',
+      },
+      message: {
+        type: 'string',
+        example: 'Não autorizado'
+      }
+    }
+  }
+})
+@ApiForbiddenResponse({
+  schema: {
+    type: 'object',
+    properties: {
+      statusCode: {
+        type: 'number',
+        example: 403,
+      },
+      background: {
+        type: 'string',
+        example: 'error',
+      },
+      message: {
+        type: 'string',
+        example: 'Você não tem permissão'
+      }
+    }
+  }
+})
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RoleGuard)
 @Controller('solicitations')
 export class SolicitationController {
   constructor(
     private solicitationService: SolicitationService,
   ) { }
 
+  @ApiExcludeEndpoint()
+  @Get('all')
+  async all() {
+    return await this.solicitationService.get();
+  }
+
   @ApiOperation({ summary: 'Listar todas as solicitações' })
   @ApiOkResponse({ type: [Solicitation], description: 'Success' })
-  @ApiUnauthorizedResponse({
-    schema: {
-      type: 'object',
-      properties: {
-        statusCode: {
-          type: 'number',
-          example: 401,
-        },
-        message: {
-          type: 'string',
-          example: 'Unauthorized'
-        }
-      }
-    }
-  })
-  @ApiForbiddenResponse({
-    schema: {
-      type: 'object',
-      properties: {
-        statusCode: {
-          type: 'number',
-          example: 403,
-        },
-        message: {
-          type: 'string',
-          example: 'Você não tem permissão'
-        }
-      }
-    }
-  })
-  @ApiBearerAuth()
-  // @UseGuards(JwtAuthGuard, RoleGuard)
-  // @RoleDecorator('admin')
+  @RoleDecorator('admin')
   @Get()
   async index() {
     return await this.solicitationService.get();
@@ -59,36 +71,6 @@ export class SolicitationController {
 
   @ApiOperation({ summary: 'Listar uma solicitação pelo ID' })
   @ApiOkResponse({ type: Solicitation, description: 'Success' })
-  @ApiUnauthorizedResponse({
-    schema: {
-      type: 'object',
-      properties: {
-        statusCode: {
-          type: 'number',
-          example: 401,
-        },
-        message: {
-          type: 'string',
-          example: 'Unauthorized'
-        }
-      }
-    }
-  })
-  @ApiForbiddenResponse({
-    schema: {
-      type: 'object',
-      properties: {
-        statusCode: {
-          type: 'number',
-          example: 403,
-        },
-        message: {
-          type: 'string',
-          example: 'Você não tem permissão'
-        }
-      }
-    }
-  })
   @ApiNotFoundResponse({
     description: 'Not Found',
     schema: {
@@ -98,6 +80,10 @@ export class SolicitationController {
           type: 'number',
           example: 404,
         },
+        background: {
+          type: 'string',
+          example: 'error',
+        },
         message: {
           type: 'string',
           example: 'Solicitação não encontrada',
@@ -106,8 +92,6 @@ export class SolicitationController {
     }
   })
   @ApiParam({ name: 'id', required: true })
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RoleGuard)
   @RoleDecorator('admin')
   @Get(':id')
   async byId(@Param('id') id: number) {
@@ -115,7 +99,7 @@ export class SolicitationController {
   }
 
   @ApiOperation({ summary: 'Cadastrar uma nova solicitação' })
-  @ApiCreatedResponse({ type: Solicitation, description: 'Created' })
+  @ApiCreatedResponse({ type: TRegisteredSolicitation, description: 'Created' })
   @ApiBadRequestResponse({
     description: 'Bad Request',
     schema: {
@@ -125,12 +109,24 @@ export class SolicitationController {
           type: 'number',
           example: 400,
         },
-        message: {
+        background: {
           type: 'string',
+          example: 'error',
+        },
+        message: {
           oneOf: [
-            { example: 'Arquivo não suportado' },
-            { example: 'Campo "X" é obrigatório' },
-            { example: 'E-mail inválido' },
+            {
+              type: 'string',
+              example: 'Arquivo não suportado'
+            },
+            {
+              type: 'string',
+              example: 'Campo "X" é obrigatório'
+            },
+            {
+              type: 'string',
+              example: 'E-mail inválido'
+            },
           ]
         },
       }
@@ -145,6 +141,10 @@ export class SolicitationController {
           type: 'number',
           example: 404,
         },
+        background: {
+          type: 'string',
+          example: 'error',
+        },
         message: {
           type: 'string',
           example: 'Tipo de solicitação não encontrada',
@@ -152,48 +152,15 @@ export class SolicitationController {
       }
     }
   })
-  @ApiConsumes('multipart/form-data')
   @ApiBody({ type: TCreateSolicitation })
-  @ApiBearerAuth()
-  @UseGuards(OptionalAuthGuard)
+  @RoleDecorator('adotante')
   @Post()
-  @UseInterceptors(FileInterceptor('media', process.env.NODE_ENV === 'dev' ? config : {}))
-  async create(@Body() data: TCreateSolicitation, @UploadedFile() media: Express.MulterS3.File, @Req() req: Request) {
-    return await this.solicitationService.post(data, media, req.user);
+  async create(@Body() data: TCreateSolicitation, @Req() req: Request) {
+    return await this.solicitationService.post(data, req.user);
   }
 
   @ApiOperation({ summary: 'Inativar uma solicitação' })
   @ApiNoContentResponse({ description: 'No Content' })
-  @ApiUnauthorizedResponse({
-    schema: {
-      type: 'object',
-      properties: {
-        statusCode: {
-          type: 'number',
-          example: 401,
-        },
-        message: {
-          type: 'string',
-          example: 'Unauthorized'
-        }
-      }
-    }
-  })
-  @ApiForbiddenResponse({
-    schema: {
-      type: 'object',
-      properties: {
-        statusCode: {
-          type: 'number',
-          example: 403,
-        },
-        message: {
-          type: 'string',
-          example: 'Você não tem permissão'
-        }
-      }
-    }
-  })
   @ApiNotFoundResponse({
     description: 'Not Found',
     schema: {
@@ -203,6 +170,10 @@ export class SolicitationController {
           type: 'number',
           example: 404,
         },
+        background: {
+          type: 'string',
+          example: 'error',
+        },
         message: {
           type: 'string',
           example: 'Solicitação não encontrada',
@@ -211,8 +182,6 @@ export class SolicitationController {
     }
   })
   @ApiParam({ name: 'id', required: true })
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RoleGuard)
   @RoleDecorator('admin')
   @Delete(':id')
   @HttpCode(204)

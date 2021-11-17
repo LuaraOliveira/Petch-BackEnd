@@ -5,6 +5,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { AuthModule } from './auth/auth.module';
 import { AllExceptionsFilter } from './common/filters/exception.filter';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { DislikeModule } from './dislike/dislike.module';
 import { FavoriteModule } from './favorite/favorite.module';
 import { GiftModule } from './gift/gift.module';
@@ -28,6 +29,7 @@ async function bootstrap() {
     .addServer(process.env.NODE_ENV === 'dev' ? 'http://localhost:8000' : 'https://petch-dev.herokuapp.com')
     .addBearerAuth({ type: 'http', in: 'header' })
     .addTag('Auth', 'Login dos usuários, registro de novos adotantes, reinicialização de senha')
+    .addTag('Dashboard', 'Relatórios para o admin')
     .addTag('Dislikes', 'Dislikes que os adotantes dão nos pets listados')
     .addTag('Favorites', 'Pets favoritos salvos pelos adotantes')
     .addTag('Gifts', 'Brindes que o adotante escolherá ao adotar um pet')
@@ -43,13 +45,14 @@ async function bootstrap() {
     .addTag('Users', 'Usuários cadastrados na plataforma')
     .build();
   const docs = SwaggerModule.createDocument(app, options, {
-    include: [AuthModule, DislikeModule, FavoriteModule, GiftModule, OngModule, PartnerModule, PetModule, RoleModule, SchedulingModule, SchedulingTypesModule, SolicitationModule, SolicitationTypesModule, SpeciesModule, UserModule],
+    include: [AuthModule, DashboardModule, DislikeModule, FavoriteModule, GiftModule, OngModule, PartnerModule, PetModule, RoleModule, SchedulingModule, SchedulingTypesModule, SolicitationModule, SolicitationTypesModule, SpeciesModule, UserModule],
   });
   SwaggerModule.setup('swagger', app, docs);
   app.enableCors();
   app.useGlobalFilters(new AllExceptionsFilter(app.getHttpAdapter()));
   app.useGlobalPipes(new ValidationPipe({
-    transform: true
+    transform: true,
+    stopAtFirstError: true
   }));
   await app.listen(process.env.PORT || 8000);
 }

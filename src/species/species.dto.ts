@@ -43,3 +43,11 @@ export class TFilterSpecies {
   @ApiProperty({ type: 'string', enum: ['true', 'false'], required: false })
   inactives?: 'true' | 'false';
 }
+
+export class TRegisteredSpecies {
+  @ApiProperty({ type: 'string' })
+  message: string;
+
+  @ApiProperty({ type: 'string' })
+  background: string;
+}

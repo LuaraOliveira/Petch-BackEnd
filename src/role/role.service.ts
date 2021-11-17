@@ -2,6 +2,7 @@ import { HttpException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 
 import { Role } from './role.model';
+import { capitalizeFirstLetter } from '../utils';
 
 @Injectable()
 export class RoleService {
@@ -9,6 +10,13 @@ export class RoleService {
     @InjectModel(Role)
     private readonly roleModel: typeof Role
   ) { }
+
+  async createRoles() {
+    await this.roleModel.bulkCreate([
+      { id: 1, name: "Admin" },
+      { id: 2, name: "Adotante" },
+    ])
+  }
 
   async get(name?: string) {
     if (name) return await this.getByName(name);
@@ -27,7 +35,7 @@ export class RoleService {
   async getByName(name: string) {
     return await this.roleModel.findOne({
       where: {
-        name: name.normalize().trim()
+        name: capitalizeFirstLetter(name).trim()
       }
     });
   }

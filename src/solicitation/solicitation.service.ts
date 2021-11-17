@@ -4,7 +4,6 @@ import { Sequelize } from 'sequelize-typescript';
 
 import { TCreateSolicitation } from './solicitation.dto';
 import { Solicitation } from './solicitation.model';
-import { UploadService } from '../config/upload.service';
 import { SolicitationTypesService } from '../solicitationTypes/solicitationTypes.service';
 import { User } from '../user/user.model';
 import { trimObj } from '../utils';
@@ -15,7 +14,6 @@ export class SolicitationService {
     @InjectModel(Solicitation)
     private readonly solicitationModel: typeof Solicitation,
     private solicitationTypeService: SolicitationTypesService,
-    private uploadService: UploadService,
     private sequelize: Sequelize
   ) { }
 
@@ -31,40 +29,22 @@ export class SolicitationService {
     return solicitation;
   }
 
-  async post(data: TCreateSolicitation, media?: Express.MulterS3.File, user?: User) {
+  async post(data: TCreateSolicitation, user?: User) {
     trimObj(data);
+
+    await this.solicitationTypeService.findById(data.solicitationTypesId);
+
     const transaction = await this.sequelize.transaction();
 
     try {
-      await this.solicitationTypeService.findById(data.solicitationTypeId);
-
-      if (media) {
-        const image = (await this.uploadService.uploadFile(media)).url;
-        Object.assign(data, { image });
-      }
-
-      if (user) {
-        data.name = null;
-        data.email = null;
-
-        const solicitation = await this.solicitationModel.create({
-          ...data,
-          userId: user.id
-        }, { transaction });
-
-        await transaction.commit();
-
-        return solicitation;
-      }
-
-      if (!data.email) throw new HttpException('E-mail é obrigatório', 400);
-      if (!data.name) throw new HttpException('Nome é obrigatório', 400);
-
-      const solicitation = await this.solicitationModel.create({ ...data }, { transaction });
+      await this.solicitationModel.create({
+        ...data,
+        userId: user.id
+      }, { transaction });
 
       await transaction.commit();
 
-      return solicitation;
+      return { message: 'Solicitação enviada com sucesso', background: 'success' };
     } catch (error) {
       await transaction.rollback();
       throw new HttpException(error, 400);

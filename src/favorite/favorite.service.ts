@@ -44,15 +44,15 @@ export class FavoriteService {
     }
   }
 
-  async remove(petId: number, userId: number) {
+  async remove(id: number, userId: number) {
     const favorite = await this.favoriteModel.findOne({
       where: {
-        petId,
+        id,
         userId
       }
     });
 
-    if (!favorite) throw new HttpException('Pet não encontrado', 404);
+    if (!favorite) throw new HttpException('Favorito não encontrado', 404);
 
     const transaction = await this.sequelize.transaction();
 

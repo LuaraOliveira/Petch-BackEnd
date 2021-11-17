@@ -2,6 +2,7 @@ import { HttpException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 
 import { SchedulingTypes } from './schedulingTypes.model';
+import { capitalizeFirstLetter } from '../utils';
 
 @Injectable()
 export class SchedulingTypesService {
@@ -9,6 +10,18 @@ export class SchedulingTypesService {
     @InjectModel(SchedulingTypes)
     private readonly schedulingTypesModel: typeof SchedulingTypes
   ) { }
+
+  async createSchedulingTypes() {
+    await this.schedulingTypesModel.bulkCreate([
+      { id: 1, name: "Vacina" },
+      { id: 2, name: "Banho" },
+      { id: 3, name: "Medicação" },
+    ])
+  }
+
+  async dash() {
+    return await this.schedulingTypesModel.scope('dash').findAll();
+  }
 
   async get(name?: string) {
     if (name) return await this.getByName(name);
@@ -27,7 +40,7 @@ export class SchedulingTypesService {
   async getByName(name: string) {
     return await this.schedulingTypesModel.findOne({
       where: {
-        name: name.normalize().trim().toLowerCase()
+        name: capitalizeFirstLetter(name).normalize().trim()
       }
     });
   }

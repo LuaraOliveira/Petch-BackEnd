@@ -16,9 +16,7 @@ export class UploadService {
 
     const hash = createTokenHEX();
 
-    if (process.env.NODE_ENV === 'dev') {
-      return { url: `http://localhost:8000/files/${file.filename}` };
-    }
+    if (process.env.NODE_ENV === 'dev') return { url: `http://localhost:8000/files/${file.filename}` };
 
     const upload = await this.s3.upload({
       Bucket: process.env.AWS_BUCKET_NAME,

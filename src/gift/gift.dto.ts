@@ -2,8 +2,6 @@ import { ApiProperty, OmitType, PartialType, PickType } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsNotEmpty } from 'class-validator';
 
-import { Partner } from '../partner/partner.dto';
-
 export class Gift {
   @ApiProperty({ uniqueItems: true, type: 'integer', readOnly: true })
   id: number;
@@ -13,33 +11,8 @@ export class Gift {
   @Transform(({ value }) => value.trim())
   name: string;
 
-  @ApiProperty({ type: 'string' })
-  @IsNotEmpty({ message: 'Descrição é obrigatório' })
-  @Transform(({ value }) => value.trim())
-  description: string;
-
-  @ApiProperty({ type: 'string', required: false })
-  size?: string;
-
-  @ApiProperty({ type: 'string', required: false })
-  color?: string;
-
-  @ApiProperty({ type: 'string', required: false })
-  weight?: string;
-
-  @ApiProperty({ type: 'string', required: false })
-  taste?: string;
-
   @ApiProperty({ type: 'string', required: false })
   image?: string;
-
-  @ApiProperty({ type: 'number' })
-  @IsNotEmpty({ message: 'Parceiro é obrigatório' })
-  @Transform(({ value }) => value.trim())
-  partnerId: number;
-
-  @ApiProperty({ type: Partner, required: false })
-  partner: Partner;
 
   @ApiProperty({ type: 'string', format: 'date', required: false, readOnly: true })
   createdAt: Date;
@@ -51,19 +24,9 @@ export class Gift {
   deletedAt: Date | null;
 }
 
-export class IndexGift extends PickType(Gift, ['id', 'name', 'description', 'image', 'deletedAt']) {
-  @ApiProperty({
-    type: 'object',
-    properties: {
-      fantasyName: {
-        type: 'string'
-      }
-    }
-  })
-  partner: object;
-}
+export class IndexGift extends OmitType(Gift, ['createdAt', 'updatedAt']) {}
 
-export class TCreateGift extends OmitType(Gift, ['createdAt', 'updatedAt', 'deletedAt', 'id', 'image', 'partner']) {
+export class TCreateGift extends PickType(Gift, ['name']) {
   @ApiProperty({ type: 'string', format: 'binary', required: false })
   media?: string;
 }
@@ -76,4 +39,12 @@ export class TFilterGift {
 
   @ApiProperty({ type: 'string', required: false })
   name?: string;
+}
+
+export class TRegisteredGift {
+  @ApiProperty({ type: 'string' })
+  message: string;
+
+  @ApiProperty({ type: 'string' })
+  background: string;
 }

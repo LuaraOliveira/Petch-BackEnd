@@ -5,7 +5,6 @@ import { Sequelize } from 'sequelize-typescript';
 
 import { Dislike } from './dislike.model';
 import { PetService } from '../pet/pet.service';
-import { UserService } from '../user/user.service';
 
 @Injectable()
 export class DislikeService {
@@ -15,8 +14,6 @@ export class DislikeService {
     private sequelize: Sequelize,
     @Inject(forwardRef(() => PetService))
     private petService: PetService,
-    @Inject(forwardRef(() => UserService))
-    private userService: UserService,
   ) { }
 
   async get(options?: FindOptions) {

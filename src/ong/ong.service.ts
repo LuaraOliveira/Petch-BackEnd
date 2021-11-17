@@ -6,7 +6,7 @@ import { Sequelize } from 'sequelize-typescript';
 import { TFilterOng, TCreateOng, TUpdateOng } from './ong.dto';
 import { Ong } from './ong.model';
 import { UploadService } from '../config/upload.service';
-import { convertBool, trimObj } from '../utils';
+import { capitalizeFirstLetter, convertBool, trimObj } from '../utils';
 
 @Injectable()
 export class OngService {
@@ -17,26 +17,20 @@ export class OngService {
     private sequelize: Sequelize
   ) { }
 
+  async all() {
+    return await this.ongModel.findAll();
+  }
+
+  async petsByOng() {
+    return await this.ongModel.scope('petsByOng').findAll();
+  }
+
   async get(query?: TFilterOng) {
     trimObj(query);
     const where = {};
 
     if (query.name) Object.assign(where, { name: { [$.startsWith]: query.name.normalize().toLowerCase() } });
     if (query.uf) Object.assign(where, { uf: query.uf.toUpperCase() });
-
-    // if (query.coverage) {
-    //   const ongs = await this.ongModel.findAll({
-    //     paranoid: !convertBool(query.inactives),
-    //     where,
-    //     attributes: ['id', 'name', 'email', 'phone1', 'responsible', 'cep', 'city', 'deletedAt']
-    //   });
-
-    //   const states = query.coverage.toUpperCase().split(',').map(cov => cov.trim());
-
-    //   const ongsFiltered = states.flatMap(state => ongs.filter(ong => ong.coverage.includes(state)));
-
-    //   return [...new Map(ongsFiltered.map(ong => [ong['id'], ong])).values()].sort((a, b) => a.id < b.id ? - 1 : 1);
-    // }
 
     return await this.ongModel.findAll({
       paranoid: !convertBool(query.inactives),
@@ -56,7 +50,7 @@ export class OngService {
   async findByName(name: string) {
     return await this.ongModel.findOne({
       where: {
-        name: name.normalize().toLowerCase()
+        name: capitalizeFirstLetter(name).trim()
       }
     });
   }
@@ -71,21 +65,24 @@ export class OngService {
 
   async post(data: TCreateOng, media?: Express.MulterS3.File) {
     trimObj(data);
+
+    if (await this.findByEmail(data.email) || await this.findByName(data.name)) throw new HttpException('ONG já cadastrada', 400);
+
+    if (media) {
+      const image = (await this.uploadService.uploadFile(media)).url;
+      Object.assign(data, { image });
+    }
+
+    if (capitalizeFirstLetter(data.coverage) === 'Nacional') data.coverage = 'AC, AL, AP, AM, BA, CE, DF, ES, GO, MA, MT, MS, MG, PA, PB, PR, PE, PI, RJ, RN, RS, RO, RR, SC, SP, SE, TO';
+
     const transaction = await this.sequelize.transaction();
 
     try {
-      if (await this.findByEmail(data.email) || await this.findByName(data.name)) throw new HttpException('ONG já cadastrada', 400);
-
-      if (media) {
-        const image = (await this.uploadService.uploadFile(media)).url;
-        Object.assign(data, { image });
-      }
-
-      const ong = await this.ongModel.create({ ...data }, { transaction });
+      await this.ongModel.create({ ...data }, { transaction });
 
       await transaction.commit();
 
-      return ong;
+      return { message: 'ONG cadastrada com sucesso', background: 'success' };
     } catch (error) {
       await transaction.rollback();
       throw new HttpException(error, 400);
@@ -94,27 +91,32 @@ export class OngService {
 
   async put(id: number, data: TUpdateOng, media?: Express.MulterS3.File) {
     trimObj(data);
+
+    const ong = await this.findById(id);
+
+    if (data.email && data.email !== ong.email) {
+      if (await this.findByEmail(data.email)) throw new HttpException('ONG já cadastrada', 400);
+    }
+
+    if (data.name && data.name !== ong.name) {
+      if (await this.findByName(data.name)) throw new HttpException('ONG já cadastrada', 400);
+    }
+
+    if (media) {
+      const image = (await this.uploadService.uploadFile(media)).url;
+      Object.assign(data, { image });
+    }
+
+    if (data.coverage && capitalizeFirstLetter(data.coverage) === 'Nacional') data.coverage = 'AC, AL, AP, AM, BA, CE, DF, ES, GO, MA, MT, MS, MG, PA, PB, PR, PE, PI, RJ, RN, RS, RO, RR, SC, SP, SE, TO';
+
     const transaction = await this.sequelize.transaction();
 
     try {
-      const ong = await this.findById(id);
-
-      if (data.email && data.email !== ong.email) {
-        if (await this.findByEmail(data.email)) throw new HttpException('ONG já cadastrada', 400);
-      }
-
-      if (data.name && data.name !== ong.name) {
-        if (await this.findByName(data.name)) throw new HttpException('ONG já cadastrada', 400);
-      }
-
-      if (media) {
-        const image = (await this.uploadService.uploadFile(media)).url;
-        Object.assign(data, { image });
-      }
-
       await ong.update({ ...data }, { transaction });
 
       await transaction.commit();
+
+      return { message: 'ONG editada com sucesso', background: 'success' };
     } catch (error) {
       await transaction.rollback();
       throw new HttpException(error, 400);
@@ -124,9 +126,20 @@ export class OngService {
   async activeInactive(id: number, status: 'true' | 'false') {
     const st = convertBool(status);
 
-    const ong = await this.findById(id, 'true');
+    const ong = await this.ongModel.findOne({
+      where: { id },
+      paranoid: false,
+      include: { all: true, paranoid: false }
+    });
 
-    if (!st) return await ong.destroy();
-    return await ong.restore();
+    if (!ong) throw new HttpException('ONG não encontrada', 404);
+
+    if (!st) {
+      await ong.destroy();
+      return ong.pets.map(pet => pet.destroy());
+    }
+
+    await ong.restore();
+    return ong.pets.map(pet => pet.restore());
   }
 }

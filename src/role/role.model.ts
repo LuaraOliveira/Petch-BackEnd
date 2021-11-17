@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { AfterSync, Column, DataType, Model, Table } from 'sequelize-typescript';
+import { Column, DataType, Model, Table } from 'sequelize-typescript';
 
 @Table({ paranoid: true })
 export class Role extends Model {
@@ -21,12 +21,4 @@ export class Role extends Model {
 
   @ApiProperty({ type: 'string', format: 'date', required: false, readOnly: true })
   deletedAt: Date | null;
-
-  @AfterSync
-  static async createAll() {
-    process.env.NODE_ENV !== 'dev' && await this.bulkCreate([
-      { id: 1, name: "Admin" },
-      { id: 2, name: "Adotante" },
-    ], { ignoreDuplicates: true });
-  }
 }

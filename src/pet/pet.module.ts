@@ -7,6 +7,7 @@ import { PetService } from './pet.service';
 import { UploadService } from '../config/upload.service';
 import { DislikeModule } from '../dislike/dislike.module';
 import { FavoriteModule } from '../favorite/favorite.module';
+import { GiftModule } from '../gift/gift.module';
 import { OngModule } from '../ong/ong.module';
 import { SpeciesModule } from '../species/species.module';
 import { UserModule } from '../user/user.module';
@@ -18,7 +19,8 @@ import { UserModule } from '../user/user.module';
     SpeciesModule,
     DislikeModule,
     UserModule,
-    FavoriteModule
+    FavoriteModule,
+    GiftModule
   ],
   controllers: [PetController],
   providers: [PetService, UploadService],

@@ -6,7 +6,7 @@ import { createTokenHEX } from '../utils';
 export const config = {
   storage: diskStorage({
     destination: resolve(__dirname, '..', 'uploads'),
-    filename(req, file, cb) {
+    filename(_, file, cb) {
       const hash = createTokenHEX();
 
       const filename = `${hash}__${file.originalname}`;

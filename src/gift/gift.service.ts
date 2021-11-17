@@ -6,29 +6,31 @@ import { Sequelize } from 'sequelize-typescript';
 import { TCreateGift, TFilterGift, TUpdateGift } from './gift.dto';
 import { Gift } from './gift.model';
 import { UploadService } from '../config/upload.service';
-import { PartnerService } from '../partner/partner.service';
-import { convertBool, trimObj } from '../utils';
+import { capitalizeFirstLetter, convertBool, trimObj } from '../utils';
 
 @Injectable()
 export class GiftService {
   constructor(
     @InjectModel(Gift)
     private readonly giftModel: typeof Gift,
-    private partnerService: PartnerService,
     private uploadService: UploadService,
     private sequelize: Sequelize
   ) { }
+
+  async all() {
+    return await this.giftModel.findAll()
+  }
 
   async get(query?: TFilterGift) {
     trimObj(query);
     const where = {};
 
-    if (query.name) Object.assign(where, { name: { [$.startsWith]: query.name.normalize().toLowerCase() } });
+    if (query.name) Object.assign(where, { name: { [$.startsWith]: capitalizeFirstLetter(query.name).normalize() } });
 
     return await this.giftModel.findAll({
       paranoid: !convertBool(query.inactives),
       where,
-      attributes: ['id', 'name', 'description', 'image', 'deletedAt']
+      attributes: ['id', 'name', 'image', 'deletedAt']
     });
   }
 
@@ -42,21 +44,20 @@ export class GiftService {
 
   async post(data: TCreateGift, media?: Express.MulterS3.File) {
     trimObj(data);
+
+    if (media) {
+      const image = (await this.uploadService.uploadFile(media)).url;
+      Object.assign(data, { image });
+    }
+
     const transaction = await this.sequelize.transaction();
 
     try {
-      if (data.partnerId) await this.partnerService.findById(data.partnerId);
-
-      if (media) {
-        const image = (await this.uploadService.uploadFile(media)).url
-        Object.assign(data, { image });
-      }
-
-      const gift = await this.giftModel.create({ ...data }, { transaction });
+      await this.giftModel.create({ ...data }, { transaction });
 
       await transaction.commit();
 
-      return gift;
+      return { message: 'Brinde cadastrado com sucesso', background: 'success' };
     } catch (error) {
       await transaction.rollback();
       throw new HttpException(error, 400);
@@ -65,21 +66,21 @@ export class GiftService {
 
   async put(id: number, data: TUpdateGift, media?: Express.MulterS3.File) {
     trimObj(data);
+    const gift = await this.findById(id);
+
+    if (media) {
+      const image = (await this.uploadService.uploadFile(media)).url;
+      Object.assign(data, { image });
+    }
+
     const transaction = await this.sequelize.transaction();
 
     try {
-      const gift = await this.findById(id);
-
-      if (data.partnerId) await this.partnerService.findById(data.partnerId);
-
-      if (media) {
-        const image = (await this.uploadService.uploadFile(media)).url
-        Object.assign(data, { image });
-      }
-
       await gift.update({ ...data }, { transaction });
 
       await transaction.commit();
+
+      return { message: 'Brinde editado com sucesso', background: 'success' };
     } catch (error) {
       await transaction.rollback();
       throw new HttpException(error, 400);

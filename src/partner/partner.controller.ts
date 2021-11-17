@@ -1,17 +1,69 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBadRequestResponse, ApiBody, ApiConsumes, ApiCreatedResponse, ApiNoContentResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiBadRequestResponse, ApiBearerAuth, ApiBody, ApiConsumes, ApiCreatedResponse, ApiExcludeEndpoint, ApiForbiddenResponse, ApiNoContentResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiParam, ApiQuery, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
 
-import { IndexPartner, Partner, TCreatePartner, TFilterPartner, TUpdatePartner } from './partner.dto';
+import { IndexPartner, Partner, TCreatePartner, TFilterPartner, TRegisteredPartner, TUpdatePartner } from './partner.dto';
 import { PartnerService } from './partner.service';
+import { RoleDecorator } from '../common/decorators/role.decorator';
+import { JwtAuthGuard } from '../common/guards/auth.guard';
+import { RoleGuard } from '../common/guards/role.guard';
 import { config } from '../config/multer';
 
 @ApiTags('Partners')
+@ApiUnauthorizedResponse({
+  description: 'Unauthorized',
+  schema: {
+    type: 'object',
+    properties: {
+      statusCode: {
+        type: 'number',
+        example: 401,
+      },
+      background: {
+        type: 'string',
+        example: 'error',
+      },
+      message: {
+        type: 'string',
+        example: 'Não autorizado'
+      }
+    }
+  }
+})
+@ApiForbiddenResponse({
+  description: 'Forbidden',
+  schema: {
+    type: 'object',
+    properties: {
+      statusCode: {
+        type: 'number',
+        example: 403,
+      },
+      background: {
+        type: 'string',
+        example: 'error',
+      },
+      message: {
+        type: 'string',
+        example: 'Você não tem permissão'
+      }
+    }
+  }
+})
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RoleGuard)
+@RoleDecorator('admin')
 @Controller('partners')
 export class PartnerController {
   constructor(
     private partnerService: PartnerService
   ) { }
+
+  @ApiExcludeEndpoint()
+  @Get('all')
+  async all() {
+    return await this.partnerService.all();
+  }
 
   @ApiOperation({ summary: 'Listar todos os parceiros' })
   @ApiOkResponse({ type: [IndexPartner], description: 'Success' })
@@ -31,6 +83,10 @@ export class PartnerController {
           type: 'number',
           example: 404,
         },
+        background: {
+          type: 'string',
+          example: 'error',
+        },
         message: {
           type: 'string',
           example: 'Parceiro não encontrado',
@@ -46,8 +102,9 @@ export class PartnerController {
   }
 
   @ApiOperation({ summary: 'Cadastrar um novo parceiro' })
-  @ApiCreatedResponse({ type: Partner, description: 'Created' })
+  @ApiCreatedResponse({ type: TRegisteredPartner, description: 'Created' })
   @ApiBadRequestResponse({
+    description: 'Bad Request',
     schema: {
       type: 'object',
       properties: {
@@ -55,16 +112,40 @@ export class PartnerController {
           type: 'number',
           example: 400,
         },
-        message: {
+        background: {
           type: 'string',
+          example: 'error',
+        },
+        message: {
           oneOf: [
-            { example: 'Arquivo não suportado' },
-            { example: 'Campo "X" é obrigatório' },
-            { example: 'E-mail é inválido' },
-            { example: 'CNPJ é inválido' },
-            { example: 'Website é inválido' },
-            { example: 'Telefone é inválido' },
-            { example: 'CEP é inválido' },
+            {
+              type: 'string',
+              example: 'Arquivo não suportado'
+            },
+            {
+              type: 'string',
+              example: 'Campo "X" é obrigatório'
+            },
+            {
+              type: 'string',
+              example: 'E-mail é inválido'
+            },
+            {
+              type: 'string',
+              example: 'CNPJ é inválido'
+            },
+            {
+              type: 'string',
+              example: 'Website é inválido'
+            },
+            {
+              type: 'string',
+              example: 'Telefone é inválido'
+            },
+            {
+              type: 'string',
+              example: 'CEP é inválido'
+            },
           ]
         },
       }
@@ -79,8 +160,9 @@ export class PartnerController {
   }
 
   @ApiOperation({ summary: 'Editar um parceiro' })
-  @ApiOkResponse({ description: 'Success' })
+  @ApiOkResponse({ type: TRegisteredPartner, description: 'Success' })
   @ApiBadRequestResponse({
+    description: 'Bad Request',
     schema: {
       type: 'object',
       properties: {
@@ -88,16 +170,40 @@ export class PartnerController {
           type: 'number',
           example: 400,
         },
-        message: {
+        background: {
           type: 'string',
+          example: 'error',
+        },
+        message: {
           oneOf: [
-            { example: 'Arquivo não suportado' },
-            { example: 'Campo "X" é obrigatório' },
-            { example: 'E-mail é inválido' },
-            { example: 'CNPJ é inválido' },
-            { example: 'Website é inválido' },
-            { example: 'Telefone é inválido' },
-            { example: 'CEP é inválido' },
+            {
+              type: 'string',
+              example: 'Arquivo não suportado'
+            },
+            {
+              type: 'string',
+              example: 'Campo "X" é obrigatório'
+            },
+            {
+              type: 'string',
+              example: 'E-mail é inválido'
+            },
+            {
+              type: 'string',
+              example: 'CNPJ é inválido'
+            },
+            {
+              type: 'string',
+              example: 'Website é inválido'
+            },
+            {
+              type: 'string',
+              example: 'Telefone é inválido'
+            },
+            {
+              type: 'string',
+              example: 'CEP é inválido'
+            },
           ]
         },
       }
@@ -122,6 +228,10 @@ export class PartnerController {
         statusCode: {
           type: 'number',
           example: 404,
+        },
+        background: {
+          type: 'string',
+          example: 'error',
         },
         message: {
           type: 'string',

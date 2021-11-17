@@ -12,9 +12,9 @@ export class Ong {
   name: string;
 
   @ApiProperty({ type: 'string', uniqueItems: true })
+  @IsEmail({}, { message: 'E-mail inválido' })
   @IsNotEmpty({ message: 'E-mail é obrigatório' })
   @Transform(({ value }) => value.trim())
-  @IsEmail({}, { message: 'E-mail inválido' })
   email: string;
 
   @ApiProperty({ type: 'string' })
@@ -26,27 +26,27 @@ export class Ong {
   image?: string;
 
   @ApiProperty({ type: 'string' })
+  @IsPhoneNumber('BR', { message: 'Telefone inválido' })
   @IsNotEmpty({ message: 'Telefone é obrigatório' })
   @Transform(({ value }) => value.trim().replace(/(\+55)/g, ''))
-  @IsPhoneNumber('BR', { message: 'Telefone inválido' })
   phone1: string;
 
   @ApiProperty({ type: 'string', required: false })
+  @IsPhoneNumber('BR', { message: 'Telefone 2 inválido' })
   @ValidateIf((_, value) => value)
   @Transform(({ value }) => value.trim().replace(/(\+55)/g, ''))
-  @IsPhoneNumber('BR', { message: 'Telefone 2 inválido' })
   phone2?: string;
 
   @ApiProperty({ type: 'string', required: false })
+  @IsPhoneNumber('BR', { message: 'Telefone 3 inválido' })
   @ValidateIf((_, value) => value)
   @Transform(({ value }) => value.trim().replace(/(\+55)/g, ''))
-  @IsPhoneNumber('BR', { message: 'Telefone 3 inválido' })
   phone3?: string;
 
   @ApiProperty({ type: 'string' })
+  @IsPostalCode('BR', { message: 'CEP inválido' })
   @IsNotEmpty({ message: 'CEP é obrigatório' })
   @Transform(({ value }) => value.trim().replace(/(\d{5})(\d{3})/, '$1-$2'))
-  @IsPostalCode('BR', { message: 'CEP inválido' })
   cep: string;
 
   @ApiProperty({ type: 'string' })
@@ -108,4 +108,12 @@ export class TFilterOng {
 
   @ApiProperty({ type: 'string', enum: ['true', 'false'], required: false })
   inactives?: 'true' | 'false';
+}
+
+export class TRegisteredOng {
+  @ApiProperty({ type: 'string' })
+  message: string;
+
+  @ApiProperty({ type: 'string' })
+  background: string;
 }

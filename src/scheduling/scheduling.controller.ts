@@ -1,12 +1,12 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
-import { ApiOperation, ApiCreatedResponse, ApiBadRequestResponse, ApiNotFoundResponse, ApiBody, ApiBearerAuth, ApiTags, ApiOkResponse, ApiParam, ApiQuery, ApiForbiddenResponse, ApiUnauthorizedResponse } from '@nestjs/swagger';
+import { Body, Controller, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import { ApiOperation, ApiCreatedResponse, ApiBadRequestResponse, ApiNotFoundResponse, ApiBody, ApiBearerAuth, ApiTags, ApiOkResponse, ApiParam, ApiQuery, ApiForbiddenResponse, ApiUnauthorizedResponse, ApiExcludeEndpoint } from '@nestjs/swagger';
 import { Request } from 'express';
 
-import { Scheduling, TAvailableScheduling, TCreateScheduling, TFilterScheduling } from './scheduling.dto';
+import { Scheduling, TAvailableScheduling, TCreateScheduling, TFilterScheduling, TRegisteredScheduling } from './scheduling.dto';
 import { SchedulingService } from './scheduling.service';
+import { RoleDecorator } from '../common/decorators/role.decorator';
 import { JwtAuthGuard } from '../common/guards/auth.guard';
 import { RoleGuard } from '../common/guards/role.guard';
-import { RoleDecorator } from '../common/decorators/role.decorator';
 
 @ApiTags('Schedulings')
 @ApiUnauthorizedResponse({
@@ -18,9 +18,13 @@ import { RoleDecorator } from '../common/decorators/role.decorator';
         type: 'number',
         example: 401,
       },
+      background: {
+        type: 'string',
+        example: 'error',
+      },
       message: {
         type: 'string',
-        example: 'Unauthorized'
+        example: 'Não autorizado'
       }
     }
   }
@@ -34,6 +38,10 @@ import { RoleDecorator } from '../common/decorators/role.decorator';
         type: 'number',
         example: 403,
       },
+      background: {
+        type: 'string',
+        example: 'error',
+      },
       message: {
         type: 'string',
         example: 'Você não tem permissão'
@@ -42,18 +50,24 @@ import { RoleDecorator } from '../common/decorators/role.decorator';
   }
 })
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RoleGuard)
 @Controller('schedulings')
 export class SchedulingController {
   constructor(
     private schedulingService: SchedulingService
   ) { }
 
+  @ApiExcludeEndpoint()
+  @Get('all')
+  async all() {
+    return await this.schedulingService.all()
+  }
+
   @ApiOperation({ summary: 'Visualizar todos os agendamentos' })
-  @ApiOkResponse({ type: Scheduling, description: 'Success' })
-  @UseGuards(JwtAuthGuard, RoleGuard)
-  @RoleDecorator('admin')
+  @ApiOkResponse({ type: [Scheduling], description: 'Success' })
   @Get()
-  async index(@Query() query?: TFilterScheduling) {
+  async index(@Req() req: Request, @Query() query?: TFilterScheduling) {
+    if (req.user.role.name === 'Adotante') return await this.schedulingService.mySchedules(req.user.id, query);
     return await this.schedulingService.get(query);
   }
 
@@ -68,12 +82,24 @@ export class SchedulingController {
           type: 'number',
           example: 400,
         },
-        message: {
+        background: {
           type: 'string',
+          example: 'error',
+        },
+        message: {
           oneOf: [
-            { example: 'Data é obrigatória' },
-            { example: 'Data inválida' },
-            { example: 'Impossível agendar em uma data passada' },
+            {
+              type: 'string',
+              example: 'Data é obrigatória'
+            },
+            {
+              type: 'string',
+              example: 'Data inválida'
+            },
+            {
+              type: 'string',
+              example: 'Impossível agendar em uma data passada'
+            },
           ]
         },
       }
@@ -88,6 +114,10 @@ export class SchedulingController {
           type: 'number',
           example: 404,
         },
+        background: {
+          type: 'string',
+          example: 'error',
+        },
         message: {
           type: 'string',
           example: 'Tipo de agendamento não encontrado',
@@ -95,22 +125,45 @@ export class SchedulingController {
       }
     }
   })
-  @ApiParam({ name: 'schedulingTypesId', required: true })
+  @ApiParam({ name: 'schedulingTypesId', type: 'number', required: true })
   @ApiQuery({ name: 'date', type: 'string', required: true })
-  @UseGuards(JwtAuthGuard, RoleGuard)
   @RoleDecorator('adotante')
   @Get(':schedulingTypesId/available')
   async available(@Param('schedulingTypesId') schedulingTypesId: number, @Query('date') date: string) {
     return await this.schedulingService.availableSchedulings(schedulingTypesId, date);
   }
 
+  @ApiOperation({ summary: 'Visualizar um agendamento pelo ID' })
+  @ApiOkResponse({ type: Scheduling, description: 'Success' })
+  @ApiNotFoundResponse({
+    description: 'Not Found',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: {
+          type: 'number',
+          example: 404,
+        },
+        background: {
+          type: 'string',
+          example: 'error',
+        },
+        message: {
+          type: 'string',
+          example: 'Agendamento não encontrado',
+        },
+      }
+    }
+  })
+  @ApiParam({ name: 'id', type: 'number', required: true })
   @Get(':id')
-  async byId(@Param('id') id: number) {
+  async byId(@Param('id') id: number, @Req() req: Request) {
+    if (req.user.role.name === 'Adotante') return await this.schedulingService.findById(id, req.user.id);
     return await this.schedulingService.findById(id);
   }
 
   @ApiOperation({ summary: 'Cadastrar um novo agendamento' })
-  @ApiCreatedResponse({ type: Scheduling, description: 'Created' })
+  @ApiCreatedResponse({ type: TRegisteredScheduling, description: 'Created' })
   @ApiBadRequestResponse({
     description: 'Bad Request',
     schema: {
@@ -120,13 +173,36 @@ export class SchedulingController {
           type: 'number',
           example: 400,
         },
-        message: {
+        background: {
           type: 'string',
+          example: 'error',
+        },
+        message: {
           oneOf: [
-            { example: 'Campo "X" é obrigatório' },
-            { example: 'Data inválida' },
-            { example: 'Data passada não permitida' },
-            { example: 'Data de agendamento indisponível' },
+            {
+              type: 'string',
+              example: 'Campo "X" é obrigatório'
+            },
+            {
+              type: 'string',
+              example: 'Você não adotou um pet para efetuar um agendamento'
+            },
+            {
+              type: 'string',
+              example: 'Data inválida'
+            },
+            {
+              type: 'string',
+              example: 'Data passada não permitida'
+            },
+            {
+              type: 'string',
+              example: 'Hora passada não permitida'
+            },
+            {
+              type: 'string',
+              example: 'Data de agendamento indisponível'
+            },
           ]
         },
       }
@@ -140,6 +216,10 @@ export class SchedulingController {
         statusCode: {
           type: 'number',
           example: 404,
+        },
+        background: {
+          type: 'string',
+          example: 'error',
         },
         message: {
           type: 'string',
@@ -149,7 +229,6 @@ export class SchedulingController {
     }
   })
   @ApiBody({ type: TCreateScheduling })
-  @UseGuards(JwtAuthGuard, RoleGuard)
   @RoleDecorator('adotante')
   @Post()
   async create(@Req() req: Request, @Body() data: TCreateScheduling) {
@@ -157,7 +236,7 @@ export class SchedulingController {
   }
 
   @ApiOperation({ summary: 'Cancelar um agendamento marcado' })
-  @ApiOkResponse({ description: 'Success' })
+  @ApiOkResponse({ type: TRegisteredScheduling, description: 'Success' })
   @ApiBadRequestResponse({
     description: 'Bad Request',
     schema: {
@@ -167,9 +246,21 @@ export class SchedulingController {
           type: 'number',
           example: 400,
         },
-        message: {
+        background: {
           type: 'string',
-          example: 'Você só pode cancelar uma agendamento com uma hora de antecedência'
+          example: 'error',
+        },
+        message: {
+          oneOf: [
+            {
+              type: 'string',
+              example: 'Você só pode cancelar uma agendamento com uma hora de antecedência'
+            },
+            {
+              type: 'string',
+              example: 'Agendamento ocorrido não pode ser cancelado'
+            },
+          ]
         },
       }
     }
@@ -183,6 +274,10 @@ export class SchedulingController {
           type: 'number',
           example: 404,
         },
+        background: {
+          type: 'string',
+          example: 'error',
+        },
         message: {
           type: 'string',
           example: 'Agendamento não encontrado',
@@ -191,7 +286,6 @@ export class SchedulingController {
     }
   })
   @ApiParam({ name: 'id', required: true })
-  @UseGuards(JwtAuthGuard, RoleGuard)
   @RoleDecorator('adotante')
   @Put(':id')
   async cancelSchedule(@Req() req: Request, @Param('id') id: number) {
